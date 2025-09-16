@@ -37,6 +37,21 @@ public class GamePanel extends JPanel implements Runnable {
             @Override public void mouseMoved(MouseEvent e) { mousePoint = e.getPoint(); }
             @Override public void mouseDragged(MouseEvent e) { mousePoint = e.getPoint(); }
         });
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    player.shooting = true;
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    player.shooting = false;
+                }
+            }
+        });
 
         addMouseWheelListener(e -> camera.zoom(e.getPreciseWheelRotation(),
                 e.getX(), e.getY(),
@@ -44,6 +59,7 @@ public class GamePanel extends JPanel implements Runnable {
 
         loop = new Thread(this, "game-loop");
         loop.start();
+
     }
 
     @Override
@@ -137,9 +153,30 @@ public class GamePanel extends JPanel implements Runnable {
 
     private void spawnBotNearPlayer() {
         try {
-            Bot b = new Bot(player.getCenterX() + (int)(Math.random()*400-200),
-                    player.getCenterY() + (int)(Math.random()*400-200));
-            bots.add(b);
+            BufferedImage tmp = ImageIO.read(new File("assets/zombie1_stand.png"));
+            int bw = tmp.getWidth(), bh = tmp.getHeight();
+            Random rnd = new Random();
+
+            for (int tries = 0; tries < 30; tries++) {
+
+                double ang = rnd.nextDouble() * Math.PI * 2;
+                double dist = 200 + rnd.nextDouble() * 250;
+                int cx = player.getCenterX() + (int)(Math.cos(ang) * dist) - bw/2;
+                int cy = player.getCenterY() + (int)(Math.sin(ang) * dist) - bh/2;
+
+
+                Rectangle2D.Double botRect = new Rectangle2D.Double(cx, cy, bw, bh);
+
+
+                if (cx < 0 || cy < 0 || cx + bw > mapLoader.mapPixelW || cy + bh > mapLoader.mapPixelH) continue;
+                if (rectHitsCollision(botRect, mapLoader.collisions)) continue;
+                System.out.println("x "+cx+" y "+cy);
+                bots.add(new Bot(cx, cy));
+                return;
+            }
+
+
+            bots.add(new Bot(mapLoader.mapPixelW/2, mapLoader.mapPixelH/2));
         } catch (Exception ignored) {}
     }
 
@@ -156,4 +193,5 @@ public class GamePanel extends JPanel implements Runnable {
         g2.setColor(Color.black);
         g2.drawRect(drawX, drawY - 10, width, 5);
     }
+
 }

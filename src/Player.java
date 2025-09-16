@@ -13,10 +13,14 @@ public class Player {
     BufferedImage stand, walk, shoot;
     double angle = 0;
     int shootCooldown = 0;
+    boolean shooting = false;
 
     Clip footstepClip;
     Clip shootClip;
     BufferedImage bulletImg;
+
+    int frameCounter = 0;
+    int frameIndex = 0;
 
     public Player(int startX, int startY, BufferedImage bulletImg) throws Exception {
         x = startX;
@@ -48,7 +52,7 @@ public class Player {
         int centerX = getCenterX();
         int centerY = getCenterY();
 
-        // หันตามเมาส์
+        // หมุนหันตามเมาส์
         angle = Math.atan2(
                 (mouse.y / camera.scale) + camera.camY - centerY,
                 (mouse.x / camera.scale) + camera.camX - centerX
@@ -64,20 +68,14 @@ public class Player {
         Rectangle2D.Double nextY = new Rectangle2D.Double(x, y + dy, stand.getWidth(), stand.getHeight());
         if (!Utils.rectHitsCollision(nextY, collisions)) y += dy;
 
-        // เสียงเดิน
+
         if (footstepClip != null && !footstepClip.isRunning()) {
             footstepClip.loop(Clip.LOOP_CONTINUOUSLY);
         }
 
 
-        if (shootCooldown == 0) {
-            int ox = centerX, oy = centerY;
-            double cos = Math.cos(angle), sin = Math.sin(angle);
-            double bx = ox + Config.PLAYER_FORWARD_OFFSET * cos + Config.PLAYER_SIDE_OFFSET * -sin;
-            double by = oy + Config.PLAYER_FORWARD_OFFSET * sin + Config.PLAYER_SIDE_OFFSET * cos;
-
-            bullets.add(new Bullet(bx, by, angle, bulletImg));
-
+        if (shooting && shootCooldown == 0) {
+            spawnBulletFromMuzzle(bullets);
             if (shootClip != null) {
                 if (shootClip.isRunning()) shootClip.stop();
                 shootClip.setFramePosition(0);
@@ -86,13 +84,42 @@ public class Player {
             shootCooldown = Config.PLAYER_SHOOT_DELAY;
         }
         if (shootCooldown > 0) shootCooldown--;
+
+
+        frameCounter++;
+        if (frameCounter >= 15) {
+            frameCounter = 0;
+            frameIndex = 1 - frameIndex;
+        }
     }
+
+    private void spawnBulletFromMuzzle(List<Bullet> bullets) {
+
+        double bx = getCenterX();
+        double by = getCenterY();
+
+        double cos = Math.cos(angle), sin = Math.sin(angle);
+        double extra = 15;
+        bx += cos * extra;
+        by += sin * extra;
+
+        bullets.add(new Bullet(bx, by, angle, bulletImg));
+    }
+
+
+
 
     public int getCenterX() { return x + stand.getWidth()/2; }
     public int getCenterY() { return y + stand.getHeight()/2; }
 
     public void draw(Graphics2D g2, int camX, int camY) {
-        BufferedImage img = walk;
+        BufferedImage img;
+        if (shooting) {
+            img = shoot;
+        } else {
+            img = (frameIndex == 0) ? stand : walk;
+        }
+
         int drawX = x - camX;
         int drawY = y - camY;
 

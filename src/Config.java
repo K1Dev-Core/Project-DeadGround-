@@ -6,8 +6,6 @@ public class Config {
     public static final int PLAYER_SPEED = 3;
     public static final int PLAYER_HP = 100;
     public static final int PLAYER_SHOOT_DELAY = 10;
-    public static final int PLAYER_FORWARD_OFFSET = 22;
-    public static final int PLAYER_SIDE_OFFSET = 6;
 
     public static final int BOT_SPEED = 2;
     public static final int BOT_HP = 100;
@@ -16,4 +14,8 @@ public class Config {
     public static final int BULLET_DAMAGE = 20;
 
     public static final int HIT_FX_LIFE = 12;
+
+
+
+
 }
