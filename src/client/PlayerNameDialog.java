@@ -39,20 +39,20 @@ public class PlayerNameDialog extends JDialog {
     private void layoutComponents() {
         setLayout(new BorderLayout(10, 10));
 
-        // Title
+        
         JLabel titleLabel = new JLabel("Enter your player name", JLabel.CENTER);
         titleLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        // Input panel
+     
         JPanel inputPanel = new JPanel(new FlowLayout());
         inputPanel.add(nameField);
 
-        // Button panel
+   
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(joinButton);
 
-        // Main panel
+   
         JPanel mainPanel = new JPanel(new BorderLayout(0, 10));
         mainPanel.add(titleLabel, BorderLayout.NORTH);
         mainPanel.add(inputPanel, BorderLayout.CENTER);

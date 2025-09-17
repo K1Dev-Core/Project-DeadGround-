@@ -2,6 +2,7 @@ package server;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.*;
 import shared.*;
 
 public class ClientHandler implements Runnable {
@@ -11,10 +12,20 @@ public class ClientHandler implements Runnable {
     private GameServer server;
     private String playerId;
     private boolean connected = true;
+    private BlockingQueue<NetworkMessage> sendQueue;
+    private Thread sendThread;
 
     public ClientHandler(Socket socket, GameServer server) {
         this.socket = socket;
         this.server = server;
+        this.sendQueue = new LinkedBlockingQueue<>();
+        try {
+            socket.setKeepAlive(true);
+            socket.setTcpNoDelay(true);
+            socket.setSoTimeout(5000);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -23,21 +34,69 @@ public class ClientHandler implements Runnable {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
+     
+            sendThread = new Thread(this::sendMessages, "ClientHandler-Send-" + socket.getInetAddress());
+            sendThread.setDaemon(true);
+            sendThread.start();
+
             System.out.println("Client connected: " + socket.getInetAddress());
 
             while (connected) {
-                NetworkMessage message = (NetworkMessage) in.readObject();
-                processMessage(message);
+                try {
+                    Object received = in.readObject();
+                    if (received instanceof NetworkMessage) {
+                        NetworkMessage message = (NetworkMessage) received;
+                        processMessage(message);
+                    } else {
+                        System.err.println("Received non-NetworkMessage object: " + received.getClass());
+                    }
+                } catch (ClassNotFoundException e) {
+                    System.err.println("Invalid data received: " + e.getMessage());
+                }
             }
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (java.net.SocketException e) {
+            System.err.println("Client disconnected: " + e.getMessage());
+        } catch (java.io.EOFException e) {
+            System.err.println("Client connection closed");
+        } catch (java.net.SocketTimeoutException e) {
+         
+        } catch (IOException e) {
             System.err.println("Error handling client: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             cleanup();
         }
     }
 
+    private void sendMessages() {
+        while (connected) {
+            try {
+                NetworkMessage message = sendQueue.take();
+                if (out != null) {
+                    synchronized (out) {
+                        out.writeObject(message);
+                        out.flush();
+                    }
+                }
+            } catch (InterruptedException e) {
+                break;
+            } catch (IOException e) {
+                System.err.println("Could not send data to client: " + e.getMessage());
+                connected = false;
+                break;
+            }
+        }
+    }
+
     private void processMessage(NetworkMessage message) {
         try {
+      
+            if (server.debugUI != null) {
+                server.debugUI.logNetworkMessage(message);
+            }
+            
             switch (message.type) {
                 case NetworkMessage.PLAYER_JOIN:
                     if (message.data instanceof PlayerData) {
@@ -64,22 +123,30 @@ public class ClientHandler implements Runnable {
                     if (message.data instanceof BulletData) {
                         BulletData bulletData = (BulletData) message.data;
                         server.broadcastToAll(
-                                new NetworkMessage(NetworkMessage.BULLET_SPAWN, bulletData.id, bulletData));
+                                new NetworkMessage(NetworkMessage.BULLET_SPAWN, bulletData.id, bulletData, server.messageCounter.incrementAndGet()));
+                        if (server.debugUI != null) {
+                            server.debugUI.logBulletSpawn();
+                        }
                     } else {
                         System.err.println("Invalid BULLET_SPAWN data type: " + message.data.getClass());
                     }
                     break;
 
-                case NetworkMessage.BOT_HIT:
+                case NetworkMessage.PLAYER_HIT:
                     if (message.data instanceof String[]) {
                         String[] hitData = (String[]) message.data;
-                        String botId = hitData[0];
+                        String hitPlayerId = hitData[0];
                         int damage = Integer.parseInt(hitData[1]);
-                        server.handleBulletHit(botId, damage);
+                        server.handlePlayerHit(hitPlayerId, damage);
                     } else {
-                        System.err.println("Invalid BOT_HIT data type: " + message.data.getClass());
+                        System.err.println("Invalid PLAYER_HIT data type: " + message.data.getClass());
                     }
                     break;
+
+                case NetworkMessage.PING:
+                    sendMessage(new NetworkMessage(NetworkMessage.PONG, "", "pong", message.sequence));
+                    break;
+
             }
         } catch (Exception e) {
             System.err.println("Error processing message: " + e.getMessage());
@@ -88,33 +155,44 @@ public class ClientHandler implements Runnable {
     }
 
     public void sendMessage(NetworkMessage message) {
-        if (connected && out != null) {
-            try {
-                // Reset the stream to avoid serialization issues
-                out.reset();
-                out.writeObject(message);
-                out.flush();
-            } catch (IOException e) {
-                System.err.println("Could not send data to client: " + e.getMessage());
-                connected = false;
-            }
+        if (connected && !sendQueue.offer(message)) {
+            System.err.println("Send queue full, dropping message");
         }
+    }
+
+    public boolean isConnected() {
+        return connected && socket != null && !socket.isClosed();
     }
 
     private void cleanup() {
         connected = false;
         try {
-            if (socket != null)
-                socket.close();
-            if (out != null)
-                out.close();
-            if (in != null)
+            if (in != null) {
                 in.close();
+            }
         } catch (IOException e) {
-            e.printStackTrace();
+            // Ignore
+        }
+        
+        try {
+            if (out != null) {
+                out.close();
+            }
+        } catch (IOException e) {
+            // Ignore
+        }
+        
+        try {
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            // Ignore
         }
 
         if (playerId != null) {
+            // Broadcast 
+            server.broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_LEAVE, playerId, playerId, server.messageCounter.incrementAndGet()));
             server.removeClient(playerId);
             System.out.println("Player left game: " + playerId);
         }

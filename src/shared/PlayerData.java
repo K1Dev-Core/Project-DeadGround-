@@ -3,6 +3,8 @@ package shared;
 import java.io.Serializable;
 
 public class PlayerData implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     public String id;
     public String name;
     public double x, y;
@@ -12,6 +14,21 @@ public class PlayerData implements Serializable {
     public boolean shooting;
     public boolean reloading;
     public long lastUpdate;
+    public long deathTime = 0;
+    public boolean isDead = false;
+
+    public PlayerData() {
+        this.id = "";
+        this.name = "";
+        this.x = 0;
+        this.y = 0;
+        this.angle = 0;
+        this.hp = 100;
+        this.ammo = 30;
+        this.shooting = false;
+        this.reloading = false;
+        this.lastUpdate = System.currentTimeMillis();
+    }
 
     public PlayerData(String id, String name, double x, double y) {
         this.id = id;
@@ -35,5 +52,13 @@ public class PlayerData implements Serializable {
         this.shooting = shooting;
         this.reloading = reloading;
         this.lastUpdate = System.currentTimeMillis();
+        
+        if (hp <= 0 && !isDead) {
+            isDead = true;
+            deathTime = System.currentTimeMillis();
+        } else if (hp > 0 && isDead) {
+            isDead = false;
+            deathTime = 0;
+        }
     }
 }

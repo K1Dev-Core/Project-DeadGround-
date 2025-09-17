@@ -3,43 +3,56 @@ package server;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import shared.*;
 
 public class GameServer {
     private ServerSocket serverSocket;
     private Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
-    private Map<String, PlayerData> players = new ConcurrentHashMap<>();
+    public Map<String, PlayerData> players = new ConcurrentHashMap<>();
     private Map<String, BotData> bots = new ConcurrentHashMap<>();
     private boolean running = false;
     private int port;
     private Thread gameLoop;
+    private ExecutorService executor;
+    public AtomicInteger messageCounter = new AtomicInteger(0);
+    public ServerDebugUI debugUI;
 
     public GameServer(int port) {
         this.port = port;
+        this.executor = Executors.newFixedThreadPool(10);
     }
 
     public void start() {
         try {
             serverSocket = new ServerSocket(port);
+            serverSocket.setSoTimeout(1000);
             running = true;
+            
+            debugUI = new ServerDebugUI(this);
+            debugUI.setVisible(true);
+            
             System.out.println("=== Game Server Started ===");
             System.out.println("Port: " + port);
             System.out.println("Local IP: " + getLocalIPAddress());
             System.out.println("Waiting for connections...");
             System.out.println("================================");
-
-            // Spawn initial bots
-            spawnInitialBots();
-
-            // Start game loop
-            gameLoop = new Thread(this::runGameLoop);
+            
+            debugUI.logMessage("Server started on port " + port);
+            debugUI.logMessage("Local IP: " + getLocalIPAddress());
+            gameLoop = new Thread(this::runGameLoop, "GameLoop");
+            gameLoop.setDaemon(true);
             gameLoop.start();
 
             while (running) {
-                Socket clientSocket = serverSocket.accept();
-                ClientHandler handler = new ClientHandler(clientSocket, this);
-                new Thread(handler).start();
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    ClientHandler handler = new ClientHandler(clientSocket, this);
+                    executor.submit(handler);
+                    debugUI.logMessage("New client connected: " + clientSocket.getInetAddress());
+                } catch (SocketTimeoutException e) {
+                }
             }
         } catch (IOException e) {
             System.err.println("Server error: " + e.getMessage());
@@ -65,6 +78,9 @@ public class GameServer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if (executor != null) {
+            executor.shutdown();
+        }
     }
 
     public void addClient(String playerId, ClientHandler handler) {
@@ -78,28 +94,24 @@ public class GameServer {
 
     public void addPlayer(PlayerData playerData) {
         players.put(playerData.id, playerData);
-        broadcastToOthers(playerData.id, new NetworkMessage(NetworkMessage.PLAYER_JOIN, playerData.id, playerData));
+        broadcastToOthers(playerData.id, new NetworkMessage(NetworkMessage.PLAYER_JOIN, playerData.id, playerData, messageCounter.incrementAndGet()));
 
-        // Send existing players to new player
         ClientHandler newClient = clients.get(playerData.id);
         if (newClient != null) {
             for (PlayerData existingPlayer : players.values()) {
                 if (!existingPlayer.id.equals(playerData.id)) {
                     newClient.sendMessage(
-                            new NetworkMessage(NetworkMessage.PLAYER_JOIN, existingPlayer.id, existingPlayer));
+                            new NetworkMessage(NetworkMessage.PLAYER_JOIN, existingPlayer.id, existingPlayer, messageCounter.incrementAndGet()));
                 }
             }
-
-            // Send existing bots to new player
-            for (BotData bot : bots.values()) {
-                newClient.sendMessage(new NetworkMessage(NetworkMessage.BOT_SPAWN, "server", bot));
-            }
         }
+        
+        debugUI.logMessage("Player joined: " + playerData.name + " (ID: " + playerData.id + ")");
     }
 
     public void updatePlayer(PlayerData playerData) {
         players.put(playerData.id, playerData);
-        broadcastToOthers(playerData.id, new NetworkMessage(NetworkMessage.PLAYER_UPDATE, playerData.id, playerData));
+        broadcastToOthers(playerData.id, new NetworkMessage(NetworkMessage.PLAYER_UPDATE, playerData.id, playerData, messageCounter.incrementAndGet()));
     }
 
     public void broadcastToOthers(String excludePlayerId, NetworkMessage message) {
@@ -116,24 +128,12 @@ public class GameServer {
         }
     }
 
-    private void spawnInitialBots() {
-        for (int i = 0; i < 5; i++) {
-            String botId = "bot_" + System.currentTimeMillis() + "_" + i;
-            double x = Math.random() * 1000 + 200;
-            double y = Math.random() * 800 + 200;
-            BotData bot = new BotData(botId, x, y);
-            bots.put(botId, bot);
-            broadcastToAll(new NetworkMessage(NetworkMessage.BOT_SPAWN, "server", bot));
-        }
-    }
-
     private void runGameLoop() {
         long frameTime = 1000L / Config.FPS;
         while (running) {
             long start = System.currentTimeMillis();
 
-            // Update bots
-            updateBots();
+            cleanupDisconnectedClients();
 
             long dt = System.currentTimeMillis() - start;
             long sleep = Math.max(2, frameTime - dt);
@@ -145,69 +145,47 @@ public class GameServer {
         }
     }
 
-    private void updateBots() {
-        for (BotData bot : bots.values()) {
-            // Find nearest player
-            PlayerData nearestPlayer = null;
-            double minDistance = Double.MAX_VALUE;
-
-            for (PlayerData player : players.values()) {
-                double distance = Math.sqrt(
-                        Math.pow(player.x - bot.x, 2) +
-                                Math.pow(player.y - bot.y, 2));
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestPlayer = player;
-                }
+    private void cleanupDisconnectedClients() {
+        List<String> toRemove = new ArrayList<>();
+        for (Map.Entry<String, ClientHandler> entry : clients.entrySet()) {
+            if (!entry.getValue().isConnected()) {
+                toRemove.add(entry.getKey());
             }
+        }
+        for (String playerId : toRemove) {
+            removeClient(playerId);
+            broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_LEAVE, playerId, playerId, messageCounter.incrementAndGet()));
+        }
+    }
 
-            if (nearestPlayer != null) {
-                // Move towards nearest player
-                double tx = nearestPlayer.x - bot.x;
-                double ty = nearestPlayer.y - bot.y;
-                bot.angle = Math.atan2(ty, tx);
-
-                double dx = Math.cos(bot.angle) * Config.BOT_SPEED;
-                double dy = Math.sin(bot.angle) * Config.BOT_SPEED;
-
-                bot.x += dx;
-                bot.y += dy;
-
-                // Update bot data
-                bot.update(bot.x, bot.y, bot.angle, bot.hp);
-
-                // Only send bot updates to clients that are not the server
-                try {
-                    for (ClientHandler handler : clients.values()) {
-                        handler.sendMessage(new NetworkMessage(NetworkMessage.BOT_UPDATE, "server", bot));
+    public void handlePlayerHit(String playerId, int damage) {
+        PlayerData player = players.get(playerId);
+        if (player != null && player.hp > 0) {
+            player.hp -= damage;
+            debugUI.logPlayerHit(playerId, damage);
+            debugUI.logMessage("Player " + playerId + " HP: " + player.hp + " (took " + damage + " damage)");
+            
+            if (player.hp <= 0) {
+                player.hp = 0;
+                debugUI.logMessage("Player " + playerId + " died!");
+                executor.submit(() -> {
+                    try {
+                        Thread.sleep(3000);
+                        player.hp = Config.PLAYER_HP;
+                        player.x = 200 + (int)(Math.random() * 400);
+                        player.y = 200 + (int)(Math.random() * 400);
+                        players.put(playerId, player);
+                        broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, playerId, player, messageCounter.incrementAndGet()));
+                        debugUI.logMessage("Player " + playerId + " respawned!");
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    System.err.println("Error sending bot update: " + e.getMessage());
-                }
+                });
             }
+            
+            players.put(playerId, player);
+            broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, playerId, player, messageCounter.incrementAndGet()));
         }
-    }
-
-    public void handleBulletHit(String botId, int damage) {
-        BotData bot = bots.get(botId);
-        if (bot != null) {
-            bot.hp -= damage;
-            if (bot.hp <= 0) {
-                bots.remove(botId);
-                broadcastToAll(new NetworkMessage(NetworkMessage.BOT_HIT, "server", botId));
-                // Spawn new bot
-                spawnNewBot();
-            }
-        }
-    }
-
-    private void spawnNewBot() {
-        String botId = "bot_" + System.currentTimeMillis();
-        double x = Math.random() * 1000 + 200;
-        double y = Math.random() * 800 + 200;
-        BotData bot = new BotData(botId, x, y);
-        bots.put(botId, bot);
-        broadcastToAll(new NetworkMessage(NetworkMessage.BOT_SPAWN, "server", bot));
     }
 
     public static void main(String[] args) {

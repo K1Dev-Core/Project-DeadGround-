@@ -1,9 +1,9 @@
 package client;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import javax.swing.*;
 
 public class ServerConnectionDialog extends JDialog {
     private JTextField serverField;
@@ -39,19 +39,18 @@ public class ServerConnectionDialog extends JDialog {
     private void layoutComponents() {
         setLayout(new BorderLayout(10, 10));
 
-        // Title
+       
         JLabel titleLabel = new JLabel("Connect to Game Server", JLabel.CENTER);
         titleLabel.setFont(new Font("Tahoma", Font.BOLD, 18));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 10, 0));
 
-        // Server input panel
+        
         JPanel inputPanel = new JPanel(new FlowLayout());
         JLabel serverLabel = new JLabel("Server IP:");
         serverLabel.setFont(new Font("Tahoma", Font.BOLD, 14));
         inputPanel.add(serverLabel);
         inputPanel.add(serverField);
 
-        // Info panel
         JPanel infoPanel = new JPanel(new BorderLayout());
         JLabel infoLabel = new JLabel("<html><center>Enter the IP address of the game server<br/>" +
                 "For local testing, use 'localhost'<br/>" +
@@ -61,11 +60,11 @@ public class ServerConnectionDialog extends JDialog {
         infoLabel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         infoPanel.add(infoLabel, BorderLayout.CENTER);
 
-        // Button panel
+     
         JPanel buttonPanel = new JPanel(new FlowLayout());
         buttonPanel.add(connectButton);
 
-        // Main panel
+     
         JPanel mainPanel = new JPanel(new BorderLayout(0, 10));
         mainPanel.add(titleLabel, BorderLayout.NORTH);
         mainPanel.add(inputPanel, BorderLayout.CENTER);

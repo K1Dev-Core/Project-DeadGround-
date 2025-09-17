@@ -1,13 +1,11 @@
 package client;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.util.*;
-import javax.imageio.ImageIO;
+import javax.swing.*;
 import shared.*;
 
 public class ClientGamePanel extends JPanel implements Runnable {
@@ -18,7 +16,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private Map<String, ClientPlayer> otherPlayers = new HashMap<>();
     private java.util.List<Bullet> bullets = new ArrayList<>();
     private Map<String, Bot> bots = new HashMap<>();
-    private java.util.List<HitEffect> effects = new ArrayList<>();
+    public java.util.List<HitEffect> effects = new ArrayList<>();
+    public java.util.List<CorpseEffect> corpses = new ArrayList<>();
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
 
@@ -30,12 +29,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public ClientGamePanel(String playerName, String playerId, String serverHost) throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
+        setFocusable(true);
+        requestFocusInWindow();
 
         mapLoader = new MapLoader();
         mapLoader.load("assets/map/mappgameeeee.tmx");
 
-        bulletImg = ImageIO.read(new File("assets/gun/bullet.png"));
-        localPlayer = new ClientPlayer(200, 200, bulletImg, playerId, playerName);
+        localPlayer = new ClientPlayer(200, 200, null, playerId, playerName);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -63,13 +63,52 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         });
+        
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_W:
+                        localPlayer.setMovingUp(true);
+                        break;
+                    case KeyEvent.VK_S:
+                        localPlayer.setMovingDown(true);
+                        break;
+                    case KeyEvent.VK_A:
+                        localPlayer.setMovingLeft(true);
+                        break;
+                    case KeyEvent.VK_D:
+                        localPlayer.setMovingRight(true);
+                        break;
+                    case KeyEvent.VK_R:
+                        localPlayer.reloading = true;
+                        break;
+                }
+            }
+            
+            @Override
+            public void keyReleased(KeyEvent e) {
+                switch (e.getKeyCode()) {
+                    case KeyEvent.VK_W:
+                        localPlayer.setMovingUp(false);
+                        break;
+                    case KeyEvent.VK_S:
+                        localPlayer.setMovingDown(false);
+                        break;
+                    case KeyEvent.VK_A:
+                        localPlayer.setMovingLeft(false);
+                        break;
+                    case KeyEvent.VK_D:
+                        localPlayer.setMovingRight(false);
+                        break;
+                }
+            }
+        });
 
-        // Initialize network client
         networkClient = new NetworkClient(this);
         networkClient.connect(serverHost, 8888);
         networkClient.sendPlayerJoin(localPlayer.toPlayerData());
 
-        // Show connection notification
         NotificationSystem.addNotification("Connected to " + serverHost, Color.GREEN);
 
         loop = new Thread(this, "game-loop");
@@ -80,34 +119,67 @@ public class ClientGamePanel extends JPanel implements Runnable {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
+        
+        if (Config.SMOOTH_MOVEMENT) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        }
 
         int viewW = getWidth();
         int viewH = getHeight();
-        int startCol = Math.max(0, camera.camX / mapLoader.tileWidth);
-        int startRow = Math.max(0, camera.camY / mapLoader.tileHeight);
-        int endCol = Math.min(mapLoader.mapWidthTiles - 1, (camera.camX + viewW) / mapLoader.tileWidth + 1);
-        int endRow = Math.min(mapLoader.mapHeightTiles - 1, (camera.camY + viewH) / mapLoader.tileHeight + 1);
+        int startCol = Math.max(0, camera.camX / mapLoader.tileWidth - Config.RENDER_DISTANCE);
+        int startRow = Math.max(0, camera.camY / mapLoader.tileHeight - Config.RENDER_DISTANCE);
+        int endCol = Math.min(mapLoader.mapWidthTiles - 1, (camera.camX + viewW) / mapLoader.tileWidth + Config.RENDER_DISTANCE);
+        int endRow = Math.min(mapLoader.mapHeightTiles - 1, (camera.camY + viewH) / mapLoader.tileHeight + Config.RENDER_DISTANCE);
 
         for (MapLoader.Layer layer : mapLoader.layers)
             drawLayer(g2, layer, startCol, startRow, endCol, endRow);
 
-        // Draw other players first
-        for (ClientPlayer player : otherPlayers.values())
-            player.draw(g2, camera.camX, camera.camY);
+        synchronized (otherPlayers) {
+            ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
+            for (ClientPlayer player : playersCopy) {
+                if (player != null) {
+                    player.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
 
-        // Draw local player on top
         localPlayer.draw(g2, camera.camX, camera.camY);
+        
+        if (localPlayer.hp <= 0) {
+            drawDeathScreen(g2);
+        }
+        
+        synchronized (corpses) {
+            ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
+            for (CorpseEffect corpse : corpsesCopy) {
+                if (corpse != null) {
+                    corpse.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
 
-        for (Bot b : bots.values())
-            b.draw(g2, camera.camX, camera.camY);
-        for (Bullet b : bullets)
-            b.draw(g2, camera.camX, camera.camY);
-        for (HitEffect e : effects)
-            e.draw(g2, camera.camX, camera.camY);
+        synchronized (bullets) {
+            ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
+            for (Bullet b : bulletsCopy) {
+                if (b != null) {
+                    b.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+        
+        synchronized (effects) {
+            ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
+            for (HitEffect e : effectsCopy) {
+                if (e != null) {
+                    e.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
 
         drawHUD(g2);
 
-        // Draw notifications
         NotificationSystem.drawNotifications(g2, getWidth(), getHeight());
 
         g2.dispose();
@@ -136,46 +208,104 @@ public class ClientGamePanel extends JPanel implements Runnable {
     @Override
     public void run() {
         long frameTime = 1000L / Config.FPS;
+        long lastTime = System.currentTimeMillis();
         while (running) {
-            long start = System.currentTimeMillis();
+            long currentTime = System.currentTimeMillis();
+            long deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
 
+            if (localPlayer.isDead && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
+                localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
+                NotificationSystem.addNotification("You respawned!", Color.GREEN);
+            }
+            
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera);
 
-            // Send player update to server
-            networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
+            if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
+                networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
+            }
 
-            Iterator<Bullet> it = bullets.iterator();
-            while (it.hasNext()) {
-                Bullet blt = it.next();
-                if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
-                    it.remove();
-                    continue;
-                }
-                Rectangle2D.Double bRect = blt.bounds();
-                for (Bot bot : bots.values()) {
-                    if (bot.bounds().intersects(bRect)) {
-                        effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
-                        it.remove();
-                        // Send bullet hit to server
-                        networkClient.sendBotHit(bot, Config.BULLET_DAMAGE);
-                        break;
+            synchronized (bullets) {
+                ArrayList<Bullet> bulletsToRemove = new ArrayList<>();
+                for (int i = bullets.size() - 1; i >= 0; i--) {
+                    Bullet blt = bullets.get(i);
+                    if (blt == null) {
+                        bullets.remove(i);
+                        continue;
                     }
+                    
+                    if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
+                        bulletsToRemove.add(blt);
+                        continue;
+                    }
+                    
+                    if (blt.justSpawned) {
+                        networkClient.sendBulletSpawn(blt.toBulletData());
+                        blt.justSpawned = false;
+                    }
+                    
+                    Rectangle2D.Double bRect = blt.bounds();
+                    synchronized (otherPlayers) {
+                        ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
+                        for (ClientPlayer player : playersCopy) {
+                            if (player != null && player.hp > 0) {
+                                Rectangle2D.Double playerRect = player.bounds();
+                                if (playerRect.intersects(bRect)) {
+                                    System.out.println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
+                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
+                                    bulletsToRemove.add(blt);
+                                    
+                                    networkClient.sendPlayerHit(player.playerId, Config.BULLET_DAMAGE);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                for (Bullet blt : bulletsToRemove) {
+                    bullets.remove(blt);
                 }
             }
 
-            effects.removeIf(e -> !e.update());
+            synchronized (effects) {
+                ArrayList<HitEffect> effectsToRemove = new ArrayList<>();
+                for (HitEffect e : effects) {
+                    if (e != null && !e.update()) {
+                        effectsToRemove.add(e);
+                    }
+                }
+                for (HitEffect e : effectsToRemove) {
+                    effects.remove(e);
+                }
+            }
+            
+            synchronized (corpses) {
+                ArrayList<CorpseEffect> corpsesToRemove = new ArrayList<>();
+                for (CorpseEffect corpse : corpses) {
+                    if (corpse != null && !corpse.update()) {
+                        corpsesToRemove.add(corpse);
+                    }
+                }
+                for (CorpseEffect corpse : corpsesToRemove) {
+                    corpses.remove(corpse);
+                }
+            }
 
             camera.centerOn(localPlayer.getCenterX(), localPlayer.getCenterY(),
                     getWidth(), getHeight(),
                     mapLoader.mapPixelW, mapLoader.mapPixelH);
 
             repaint();
-            long dt = System.currentTimeMillis() - start;
-            long sleep = Math.max(2, frameTime - dt);
+            
+            long targetTime = frameTime;
+            long sleep = Math.max(1, targetTime - deltaTime);
             try {
-                Thread.sleep(sleep);
+                if (sleep > 0) {
+                    Thread.sleep(sleep);
+                }
             } catch (InterruptedException ignored) {
             }
         }
@@ -220,7 +350,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
             g2.drawString("RELOADING...", hudX, hudY + 20);
         }
 
-        // Draw player list
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 14));
         int y = 20;
@@ -228,73 +357,165 @@ public class ClientGamePanel extends JPanel implements Runnable {
         y += 20;
         g2.drawString(localPlayer.playerName + " (You)", 10, y);
         y += 20;
-        for (ClientPlayer player : otherPlayers.values()) {
-            g2.drawString(player.playerName, 10, y);
-            y += 20;
+        synchronized (otherPlayers) {
+            ArrayList<ClientPlayer> playersCopy2 = new ArrayList<>(otherPlayers.values());
+            for (ClientPlayer player : playersCopy2) {
+                if (player != null) {
+                    g2.drawString(player.playerName, 10, y);
+                    y += 20;
+                }
+            }
         }
+    }
+    
+    private void drawDeathScreen(Graphics2D g2) {
+        int screenWidth = getWidth();
+        int screenHeight = getHeight();
+        
+        g2.setColor(new Color(0, 0, 0, 150));
+        g2.fillRect(0, 0, screenWidth, screenHeight);
+        
+        long timeLeft = Config.RESPAWN_TIME - ((System.currentTimeMillis() - localPlayer.deathTime) / 1000);
+        if (timeLeft < 0) timeLeft = 0;
+        
+        g2.setFont(new Font("Arial", Font.BOLD, 48));
+        g2.setColor(Color.WHITE);
+        
+        FontMetrics fm = g2.getFontMetrics();
+        String countdownText = "RESPAWN IN: " + timeLeft;
+        int textX = (screenWidth - fm.stringWidth(countdownText)) / 2;
+        int textY = screenHeight / 2;
+        
+        g2.setColor(Color.BLACK);
+        g2.drawString(countdownText, textX - 2, textY - 2);
+        g2.drawString(countdownText, textX + 2, textY - 2);
+        g2.drawString(countdownText, textX - 2, textY + 2);
+        g2.drawString(countdownText, textX + 2, textY + 2);
+        
+        g2.setColor(Color.WHITE);
+        g2.drawString(countdownText, textX, textY);
+        
+        g2.setFont(new Font("Arial", Font.BOLD, 24));
+        g2.setColor(Color.RED);
+        String diedText = "YOU DIED";
+        fm = g2.getFontMetrics();
+        int diedX = (screenWidth - fm.stringWidth(diedText)) / 2;
+        int diedY = textY - 60;
+        
+        g2.setColor(Color.BLACK);
+        g2.drawString(diedText, diedX - 1, diedY - 1);
+        g2.drawString(diedText, diedX + 1, diedY - 1);
+        g2.drawString(diedText, diedX - 1, diedY + 1);
+        g2.drawString(diedText, diedX + 1, diedY + 1);
+        
+        g2.setColor(Color.RED);
+        g2.drawString(diedText, diedX, diedY);
     }
 
     public void addPlayer(PlayerData playerData) {
         try {
-            ClientPlayer player = new ClientPlayer((int) playerData.x, (int) playerData.y, bulletImg,
-                    playerData.id, playerData.name);
-            otherPlayers.put(playerData.id, player);
-            NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
+            synchronized (otherPlayers) {
+                ClientPlayer player = new ClientPlayer((int) playerData.x, (int) playerData.y, null,
+                        playerData.id, playerData.name);
+                otherPlayers.put(playerData.id, player);
+                NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     public void removePlayer(String playerId) {
-        ClientPlayer player = otherPlayers.remove(playerId);
-        if (player != null) {
-            NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+        synchronized (otherPlayers) {
+            ClientPlayer player = otherPlayers.remove(playerId);
+            if (player != null) {
+                for (int i = 0; i < 20; i++) {
+                    effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                }
+                NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+            }
         }
     }
 
     public void updatePlayer(PlayerData playerData) {
-        ClientPlayer player = otherPlayers.get(playerData.id);
-        if (player != null) {
-            player.x = (int) playerData.x;
-            player.y = (int) playerData.y;
-            player.angle = playerData.angle;
-            player.hp = playerData.hp;
-            player.ammo = playerData.ammo;
-            player.shooting = playerData.shooting;
-            player.reloading = playerData.reloading;
+        synchronized (otherPlayers) {
+            ClientPlayer player = otherPlayers.get(playerData.id);
+            if (player != null) {
+                int oldHp = player.hp;
+                player.hp = playerData.hp;
+                
+                if (oldHp != player.hp) {
+                    if (player.hp <= 0 && oldHp > 0) {
+                        for (int i = 0; i < 15; i++) {
+                            effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                        }
+                        synchronized (corpses) {
+                            corpses.add(new CorpseEffect((int) player.x, (int) player.y, player.playerName));
+                        }
+                        NotificationSystem.addNotification(player.playerName + " died!", Color.RED);
+                    } else if (oldHp > player.hp) {
+                
+                        player.playDamageSound();
+                    }
+                }
+                
+                double lerpFactor = Config.PLAYER_LERP_FACTOR;
+                player.x = (int) (player.x + (playerData.x - player.x) * lerpFactor);
+                player.y = (int) (player.y + (playerData.y - player.y) * lerpFactor);
+                player.angle = playerData.angle;
+                player.ammo = playerData.ammo;
+                player.shooting = playerData.shooting;
+                player.reloading = playerData.reloading;
+                
+                if (playerData.isDead) {
+                    player.isDead = true;
+                    player.deathTime = playerData.deathTime;
+                } else {
+                    if (player.isDead) {
+                        synchronized (corpses) {
+                            corpses.removeIf(corpse -> corpse.playerName.equals(player.playerName));
+                        }
+                    }
+                    player.isDead = false;
+                    player.deathTime = 0;
+                }
+            }
         }
     }
 
     public void addBullet(BulletData bulletData) {
-        bullets.add(new Bullet(bulletData.x, bulletData.y, bulletData.angle, bulletImg));
+        synchronized (bullets) {
+            boolean exists = false;
+            for (Bullet b : bullets) {
+                if (b != null && Math.abs(b.x - bulletData.x) < 5 && Math.abs(b.y - bulletData.y) < 5) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                bullets.add(new Bullet(bulletData.x, bulletData.y, bulletData.angle, null));
+            }
+        }
     }
-
-    public void addBot(BotData botData) {
-        try {
-            Bot bot = new Bot((int) botData.x, (int) botData.y);
-            bot.hp = botData.hp;
-            bot.angle = botData.angle;
-            bots.put(botData.id, bot);
-            NotificationSystem.addNotification("Zombie spawned nearby!", Color.ORANGE);
-        } catch (Exception e) {
-            e.printStackTrace();
+    
+    public void hitPlayer(String playerId, int damage) {
+        if (playerId.equals(localPlayer.playerId)) {
+            for (int i = 0; i < 15; i++) {
+                effects.add(new HitEffect((int) (localPlayer.x + Math.random() * 32), (int) (localPlayer.y + Math.random() * 32)));
+            }
+  
+            localPlayer.playDamageSound();
+        } else {
+            synchronized (otherPlayers) {
+                ClientPlayer player = otherPlayers.get(playerId);
+                if (player != null) {
+                    for (int i = 0; i < 15; i++) {
+                        effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                    }
+                 
+                }
+            }
         }
     }
 
-    public void updateBot(BotData botData) {
-        Bot bot = bots.get(botData.id);
-        if (bot != null) {
-            bot.x = botData.x;
-            bot.y = botData.y;
-            bot.angle = botData.angle;
-            bot.hp = botData.hp;
-        }
-    }
-
-    public void removeBot(String botId) {
-        Bot bot = bots.remove(botId);
-        if (bot != null) {
-            NotificationSystem.addNotification("Zombie eliminated!", Color.CYAN);
-        }
-    }
 }
