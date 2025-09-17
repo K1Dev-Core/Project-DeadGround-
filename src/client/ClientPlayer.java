@@ -36,6 +36,7 @@ public class ClientPlayer {
     int dashCooldown = 0;
     int dashDistance = 0;
     double dashAngle = 0;
+    private List<?> tanks;
     
     long deathTime = 0;
     boolean isDead = false;
@@ -119,7 +120,9 @@ public class ClientPlayer {
             List<Rectangle2D.Double> collisions,
             int mapW, int mapH,
             Camera camera,
-            Map<String, ClientPlayer> otherPlayers) {
+            Map<String, ClientPlayer> otherPlayers,
+            List<?> tanks) {
+        this.tanks = tanks;
 
         if (hp <= 0) {
             if (!isDead) {
@@ -182,13 +185,13 @@ public class ClientPlayer {
 
         if (dx != 0) {
             Rectangle2D.Double nextX = new Rectangle2D.Double(x + dx, y, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers))
+            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers) && !collidesWithTanks(nextX))
                 x += dx;
         }
         
         if (dy != 0) {
             Rectangle2D.Double nextY = new Rectangle2D.Double(x, y + dy, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers))
+            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers) && !collidesWithTanks(nextY))
                 y += dy;
         }
 
@@ -370,6 +373,27 @@ public class ClientPlayer {
         for (ClientPlayer player : otherPlayers.values()) {
             if (player != null && player.hp > 0 && rect.intersects(player.bounds())) {
                 return true;
+            }
+        }
+        return false;
+    }
+    
+    private boolean collidesWithTanks(Rectangle2D.Double rect) {
+        for (Object tank : this.tanks) {
+            if (tank != null) {
+                try {
+                    int tankX = (Integer) tank.getClass().getField("x").get(tank);
+                    int tankY = (Integer) tank.getClass().getField("y").get(tank);
+                    boolean tankDead = (Boolean) tank.getClass().getField("isDead").get(tank);
+                    if (!tankDead) {
+                        Rectangle2D.Double tankRect = new Rectangle2D.Double(tankX, tankY, 64, 64);
+                        if (rect.intersects(tankRect)) {
+                            return true;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
         return false;

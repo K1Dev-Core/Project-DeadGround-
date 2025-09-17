@@ -25,6 +25,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private java.util.List<Chicken> chickens = new ArrayList<>();
     private java.util.List<Long> chickenRespawnTimes = new ArrayList<>();
     private java.util.List<Weapon> weapons = new ArrayList<>();
+    private java.util.List<Tank> tanks = new ArrayList<>();
+    private java.util.List<TankBullet> tankBullets = new ArrayList<>();
+    private java.util.List<ExplosionEffect> explosionEffects = new ArrayList<>();
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -200,6 +203,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
             int[] point = Config.WEAPON_SPAWN_POINTS[i];
             weapons.add(new Weapon(i, point[0], point[1]));
         }
+        
+        for (int i = 0; i < Config.TANK_SPAWN_POINTS.length; i++) {
+            int[] point = Config.TANK_SPAWN_POINTS[i];
+            tanks.add(new Tank(point[0], point[1]));
+        }
 
         loop = new Thread(this, "game-loop");
         loop.start();
@@ -237,6 +245,15 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
+        
+        synchronized (explosionEffects) {
+            ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
+            for (ExplosionEffect e : explosionCopy) {
+                if (e != null) {
+                    e.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
 
         synchronized (corpses) {
             ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
@@ -261,6 +278,24 @@ public class ClientGamePanel extends JPanel implements Runnable {
             for (Weapon weapon : weaponsCopy) {
                 if (weapon != null) {
                     weapon.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+        
+        synchronized (tanks) {
+            ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
+            for (Tank tank : tanksCopy) {
+                if (tank != null && !tank.isDead) {
+                    tank.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+        
+        synchronized (tankBullets) {
+            ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
+            for (TankBullet bullet : tankBulletsCopy) {
+                if (bullet != null) {
+                    bullet.draw(g2, camera.camX, camera.camY);
                 }
             }
         }
@@ -377,7 +412,38 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
-                    camera, otherPlayers);
+                    camera, otherPlayers, tanks);
+            
+            synchronized (tanks) {
+                ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
+                for (Tank tank : tanksCopy) {
+                    if (tank != null && !tank.isDead) {
+                        tank.update(localPlayer, mapLoader.collisions);
+                        
+                        if (tank.canShoot()) {
+                            tankBullets.add(new TankBullet(tank.x + 20, tank.y + 20, tank.angle));
+                            tank.resetShootCooldown();
+                            tank.playExplosionSound();
+                        }
+                    }
+                }
+            }
+            
+            synchronized (tankBullets) {
+                ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
+                ArrayList<TankBullet> tankBulletsToRemove = new ArrayList<>();
+                for (TankBullet bullet : tankBulletsCopy) {
+                    if (bullet != null) {
+                        if (!bullet.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
+                            explosionEffects.add(new ExplosionEffect((int) bullet.x, (int) bullet.y));
+                            tankBulletsToRemove.add(bullet);
+                        }
+                    }
+                }
+                for (TankBullet bullet : tankBulletsToRemove) {
+                    tankBullets.remove(bullet);
+                }
+            }
 
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
@@ -541,6 +607,22 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
             
+            synchronized (explosionEffects) {
+                ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
+                ArrayList<ExplosionEffect> explosionToRemove = new ArrayList<>();
+                for (ExplosionEffect e : explosionCopy) {
+                    if (e != null) {
+                        e.update();
+                        if (e.isFinished) {
+                            explosionToRemove.add(e);
+                        }
+                    }
+                }
+                for (ExplosionEffect e : explosionToRemove) {
+                    explosionEffects.remove(e);
+                }
+            }
+            
             synchronized (corpses) {
                 ArrayList<CorpseEffect> corpsesToRemove = new ArrayList<>();
                 for (CorpseEffect corpse : corpses) {
@@ -563,7 +645,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
             long sleep = Math.max(1, targetTime - deltaTime);
             try {
                 if (sleep > 0) {
-                    Thread.sleep(sleep);
+                Thread.sleep(sleep);
                 }
             } catch (InterruptedException ignored) {
             }
@@ -591,11 +673,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
         g2.setFont(new Font("Arial", Font.BOLD, 12));
         g2.drawString(ammo + "/" + maxAmmo, drawX, drawY);
     }
-    
+
     private void drawDashCooldownBar(Graphics2D g2) {
         if (localPlayer.dashCooldown > 0) {
-            int screenWidth = getWidth();
-            int screenHeight = getHeight();
+        int screenWidth = getWidth();
+        int screenHeight = getHeight();
             int barWidth = 120;
             int barHeight = 8;
             int x = (screenWidth - barWidth) / 2;

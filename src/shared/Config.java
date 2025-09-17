@@ -60,4 +60,10 @@ public class Config {
         {2224, 1839},
         {1071, 2650}
     };
+    
+    public static final int TANK_HP = 200;
+    public static final int TANK_SHOOT_DELAY = 90;
+    public static final int TANK_RANGE = 200;
+    public static final int[][] TANK_SPAWN_POINTS = {{2502, 2238}};
+    public static final int EXPLOSION_EFFECT_DURATION = 60;
 }
