@@ -421,7 +421,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         tank.update(localPlayer, mapLoader.collisions);
                         
                         if (tank.canShoot()) {
-                            tankBullets.add(new TankBullet(tank.x + 20, tank.y + 20, tank.angle));
+                            System.out.println("Tank shooting at angle: " + Math.toDegrees(tank.angle));
+                            tankBullets.add(new TankBullet(tank.x + 32, tank.y + 32, tank.angle));
                             tank.resetShootCooldown();
                             tank.playExplosionSound();
                         }

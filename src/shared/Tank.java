@@ -48,6 +48,7 @@ public class Tank {
         double distance = Math.sqrt(dx * dx + dy * dy);
         
         angle = Math.atan2(dy, dx);
+        System.out.println("Tank angle: " + Math.toDegrees(angle) + " to player at (" + targetX + "," + targetY + ")");
         
         if (distance <= Config.TANK_RANGE && distance > 50) {
             if (shootCooldown <= 0) {
@@ -69,9 +70,14 @@ public class Tank {
         g2.setColor(new Color(255, 0, 0, 100));
         g2.setStroke(new BasicStroke(2));
         g2.drawOval(drawX - Config.TANK_RANGE + 32, drawY - Config.TANK_RANGE + 32, Config.TANK_RANGE * 2, Config.TANK_RANGE * 2);
+
         
-        g2.setColor(new Color(255, 0, 0, 50));
-        g2.fillOval(drawX - 50 + 32, drawY - 50 + 32, 100, 100);
+        g2.setColor(Color.YELLOW);
+        g2.setStroke(new BasicStroke(3));
+        double lineLength = 50;
+        double endX = drawX + 32 + Math.cos(angle) * lineLength;
+        double endY = drawY + 32 + Math.sin(angle) * lineLength;
+        g2.drawLine(drawX + 32, drawY + 32, (int) endX, (int) endY);
         
         AffineTransform at = new AffineTransform();
         at.translate(drawX + tankImage.getWidth() / 2.0, drawY + tankImage.getHeight() / 2.0);
@@ -122,7 +128,7 @@ public class Tank {
             Clip explosionClip = AudioSystem.getClip();
             explosionClip.open(audioInputStream);
             FloatControl gainControl = (FloatControl) explosionClip.getControl(FloatControl.Type.MASTER_GAIN);
-            gainControl.setValue(-10.0f);
+            gainControl.setValue(-20.0f);
             explosionClip.start();
         } catch (Exception e) {
             e.printStackTrace();
