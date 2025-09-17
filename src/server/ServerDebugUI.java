@@ -24,6 +24,7 @@ public class ServerDebugUI extends JFrame {
     private int messageCount = 0;
     private int hitCount = 0;
     private int bulletCount = 0;
+    private int chickenCount = 0;
     private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
     public ServerDebugUI(GameServer server) {
@@ -149,8 +150,8 @@ public class ServerDebugUI extends JFrame {
 
     private void updateStats() {
         SwingUtilities.invokeLater(() -> {
-            statsLabel.setText(String.format("Messages: %d | Hits: %d | Bullets: %d | Players: %d", 
-                messageCount, hitCount, bulletCount, server.players.size()));
+            statsLabel.setText(String.format("Messages: %d | Hits: %d | Bullets: %d | Players: %d | Chickens: %d", 
+                messageCount, hitCount, bulletCount, server.players.size(), chickenCount));
         });
     }
 
@@ -191,6 +192,10 @@ public class ServerDebugUI extends JFrame {
 
     public void logBulletSpawn() {
         bulletCount++;
+    }
+    
+    public void logChickenUpdate() {
+        chickenCount++;
     }
 
     private String getMessageTypeName(int type) {

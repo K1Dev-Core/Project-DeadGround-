@@ -25,7 +25,7 @@ public class GameLauncher extends JFrame {
     }
     
     private void initializeUI() {
-        setTitle("MapTest - Online Multiplayer");
+        setTitle("Project-DeadGround - Online Multiplayer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setSize(800, 600);
@@ -57,7 +57,7 @@ public class GameLauncher extends JFrame {
         mainPanel.setLayout(null);
         setContentPane(mainPanel);
         
-        titleLabel = new JLabel("MAPTEST");
+        titleLabel = new JLabel("Project-DeadGround");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 48));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setBounds(300, 80, 200, 60);
@@ -252,7 +252,7 @@ public class GameLauncher extends JFrame {
                     try {
                         String playerId = "player_" + System.currentTimeMillis();
                         ClientGamePanel gamePanel = new ClientGamePanel(playerName, playerId, serverAddress);
-                        JFrame gameFrame = new JFrame("MapTest - " + playerName);
+                        JFrame gameFrame = new JFrame("Project-DeadGround - " + playerName);
                         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                         gameFrame.add(gamePanel);
                         gameFrame.pack();

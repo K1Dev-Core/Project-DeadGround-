@@ -271,11 +271,21 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             synchronized (chickens) {
                 ArrayList<Chicken> chickensToRemove = new ArrayList<>();
-                for (Chicken chicken : chickens) {
+                for (int i = 0; i < chickens.size(); i++) {
+                    Chicken chicken = chickens.get(i);
                     if (chicken != null) {
                         chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
                         if (chicken.hp <= 0) {
                             chickensToRemove.add(chicken);
+                        } else {
+                            ChickenData chickenData = new ChickenData(i, chicken.x, chicken.y);
+                            chickenData.hp = chicken.hp;
+                            chickenData.angle = chicken.angle;
+                            chickenData.isMoving = chicken.isMoving;
+                            chickenData.isHit = chicken.isHit;
+                            chickenData.isIdle = chicken.isIdle;
+                            chickenData.currentFrame = chicken.currentFrame;
+                            networkClient.sendChickenUpdate(chickenData);
                         }
                     }
                 }

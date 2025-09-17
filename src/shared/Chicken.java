@@ -16,6 +16,7 @@ public class Chicken {
     public boolean isMoving = false;
     public boolean isHit = false;
     public int hitCooldown = 0;
+    public boolean isIdle = true;
     
     private BufferedImage idleSheet, runSheet, hitSheet;
     private int frameWidth = 32;
@@ -23,7 +24,7 @@ public class Chicken {
     private int idleFrames = 13;
     private int runFrames = 14;
     private int hitFrames = 5;
-    private int currentFrame = 0;
+    public int currentFrame = 0;
     private int animationCounter = 0;
     private int animationSpeed = 8;
     
@@ -50,29 +51,34 @@ public class Chicken {
             hitCooldown--;
             isHit = true;
             isMoving = false;
+            isIdle = false;
         } else {
             isHit = false;
             
-            if (Math.random() < 0.02) {
-                angle = Math.random() * Math.PI * 2;
-            }
-            
-            velocityX = Math.cos(angle) * speed;
-            velocityY = Math.sin(angle) * speed;
-            
-            double newX = x + velocityX;
-            double newY = y + velocityY;
-            
-            Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, frameWidth, frameHeight);
-            
-            if (!Utils.rectHitsCollision(testRect, collisions) && 
-                newX >= 0 && newY >= 0 && 
-                newX < mapWidth - frameWidth && newY < mapHeight - frameHeight) {
-                x = (int) newX;
-                y = (int) newY;
-                isMoving = true;
+            if (!isIdle) {
+                if (Math.random() < 0.02) {
+                    angle = Math.random() * Math.PI * 2;
+                }
+                
+                velocityX = Math.cos(angle) * speed;
+                velocityY = Math.sin(angle) * speed;
+                
+                double newX = x + velocityX;
+                double newY = y + velocityY;
+                
+                Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, frameWidth, frameHeight);
+                
+                if (!Utils.rectHitsCollision(testRect, collisions) && 
+                    newX >= 0 && newY >= 0 && 
+                    newX < mapWidth - frameWidth && newY < mapHeight - frameHeight) {
+                    x = (int) newX;
+                    y = (int) newY;
+                    isMoving = true;
+                } else {
+                    angle = Math.random() * Math.PI * 2;
+                    isMoving = false;
+                }
             } else {
-                angle = Math.random() * Math.PI * 2;
                 isMoving = false;
             }
         }
@@ -102,6 +108,7 @@ public class Chicken {
         hp -= damage;
         hitCooldown = 30;
         isHit = true;
+        isIdle = false;
     }
     
     public void draw(Graphics2D g2, int camX, int camY) {

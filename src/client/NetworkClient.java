@@ -274,6 +274,10 @@ public class NetworkClient {
         String[] hitData = { playerId, String.valueOf(damage) };
         sendMessage(new NetworkMessage(NetworkMessage.PLAYER_HIT, gamePanel.localPlayer.playerId, hitData, sequenceCounter.incrementAndGet()));
     }
+    
+    public void sendChickenUpdate(ChickenData chickenData) {
+        sendMessage(new NetworkMessage(NetworkMessage.CHICKEN_UPDATE, gamePanel.localPlayer.playerId, chickenData, sequenceCounter.incrementAndGet()));
+    }
 
     private void sendMessage(NetworkMessage message) {
         if (connected && !messageQueue.offer(message)) {

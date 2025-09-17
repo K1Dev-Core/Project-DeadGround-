@@ -16,6 +16,7 @@ public class NetworkMessage implements Serializable {
     public static final int GAME_STATE = 9;
     public static final int PING = 10;
     public static final int PONG = 11;
+    public static final int CHICKEN_UPDATE = 12;
 
     public int type;
     public String playerId;
