@@ -243,6 +243,12 @@ public class NetworkClient {
                     gamePanel.hitPlayer(hitPlayerId, damage);
                 }
                 break;
+            case NetworkMessage.CHICKEN_UPDATE:
+                if (message.data instanceof ChickenData) {
+                    ChickenData chickenData = (ChickenData) message.data;
+                    gamePanel.updateChicken(chickenData);
+                }
+                break;
 
             case NetworkMessage.PONG:
                 ping = System.currentTimeMillis() - lastPingTime;

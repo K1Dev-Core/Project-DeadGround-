@@ -13,6 +13,7 @@ public class ChickenData implements Serializable {
     public boolean isHit;
     public boolean isIdle;
     public int currentFrame;
+    public int respawnTimer;
     
     public ChickenData() {
         this.id = 0;
@@ -24,6 +25,7 @@ public class ChickenData implements Serializable {
         this.isHit = false;
         this.isIdle = true;
         this.currentFrame = 0;
+        this.respawnTimer = Config.CHICKEN_RESPAWN_TIME * 60;
     }
     
     public ChickenData(int id, int x, int y) {
@@ -31,10 +33,11 @@ public class ChickenData implements Serializable {
         this.x = x;
         this.y = y;
         this.hp = Config.CHICKEN_HP;
-        this.angle = 0;
+        this.angle = Math.random() * Math.PI * 2;
         this.isMoving = false;
         this.isHit = false;
         this.isIdle = true;
         this.currentFrame = 0;
+        this.respawnTimer = Config.CHICKEN_RESPAWN_TIME * 60;
     }
 }

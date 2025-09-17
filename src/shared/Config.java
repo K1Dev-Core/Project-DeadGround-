@@ -13,12 +13,12 @@ public class Config {
     public static final int BOT_HP = 100;
 
     public static final int BULLET_SPEED = 10;
-    public static final int BULLET_DAMAGE = 5;
+    public static final int BULLET_DAMAGE = 10;
     public static final int BULLET_RANGE = 500;
 
     public static final int HIT_FX_LIFE = 12;
     
-    public static boolean VSYNC = true;
+
     public static boolean SMOOTH_MOVEMENT = true;
     public static int RENDER_DISTANCE = 2;
     
@@ -27,6 +27,11 @@ public class Config {
     public static int RESPAWN_TIME = 10;
     public static int RESPAWN_SAFE_DISTANCE = 100;
     public static int RESPAWN_ATTEMPTS = 50;
-    public static int CHICKEN_HP = 5;
-    public static int CHICKEN_HEAL_AMOUNT = 10;
+    public static int CHICKEN_HP = 20;
+    public static int CHICKEN_SPAWN_COUNT = 5;
+    public static int CHICKEN_ZONE_X = 1000;
+    public static int CHICKEN_ZONE_Y = 1200;
+    public static int CHICKEN_ZONE_SIZE = 200;
+    public static int CHICKEN_RESPAWN_TIME = 10;
+    public static int CHICKEN_MOVEMENT_SPEED = 1;
 }

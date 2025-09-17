@@ -6,8 +6,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.List;
 import javax.imageio.ImageIO;
+import javax.sound.sampled.*;
 
 public class Chicken {
+    public int id;
     public int x, y;
     public int hp = Config.CHICKEN_HP;
     public double angle;
@@ -27,8 +29,10 @@ public class Chicken {
     public int currentFrame = 0;
     private int animationCounter = 0;
     private int animationSpeed = 8;
+    private Clip hitClip;
     
-    public Chicken(int x, int y) {
+    public Chicken(int id, int x, int y) {
+        this.id = id;
         this.x = x;
         this.y = y;
         this.angle = Math.random() * Math.PI * 2;
@@ -41,6 +45,14 @@ public class Chicken {
             idleSheet = null;
             runSheet = null;
             hitSheet = null;
+        }
+        
+        try {
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File("assets/sfx/chicken-hit.wav"));
+            hitClip = AudioSystem.getClip();
+            hitClip.open(audioInputStream);
+        } catch (Exception e) {
+            hitClip = null;
         }
     }
     
@@ -104,11 +116,36 @@ public class Chicken {
         }
     }
     
+    public void updateFromData(ChickenData data) {
+        if (data == null) return;
+        
+        this.x = data.x;
+        this.y = data.y;
+        this.hp = data.hp;
+        this.angle = data.angle;
+        this.isMoving = data.isMoving;
+        this.isHit = data.isHit;
+        this.isIdle = data.isIdle;
+        this.currentFrame = data.currentFrame;
+        
+        if (isHit) {
+            hitCooldown = 30;
+        }
+    }
+    
     public void takeDamage(int damage) {
         hp -= damage;
         hitCooldown = 30;
         isHit = true;
         isIdle = false;
+        
+        if (hitClip != null) {
+            if (hitClip.isRunning()) {
+                hitClip.stop();
+            }
+            hitClip.setFramePosition(0);
+            hitClip.start();
+        }
     }
     
     public void draw(Graphics2D g2, int camX, int camY) {
@@ -155,9 +192,12 @@ public class Chicken {
                 
                 g2d.dispose();
             }
+        } else {
+            g2.setColor(Color.YELLOW);
+            g2.fillOval(screenX, screenY, frameWidth, frameHeight);
         }
         
-        g2.setColor(Color.RED);
+        g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 10));
         FontMetrics fm = g2.getFontMetrics();
         int nameX = screenX - fm.stringWidth("Chicken") / 2;
@@ -168,6 +208,9 @@ public class Chicken {
         g2.fillRect(screenX, screenY - 15, frameWidth, 3);
         g2.setColor(Color.RED);
         g2.fillRect(screenX, screenY - 15, (int)(frameWidth * (hp / (double)Config.CHICKEN_HP)), 3);
+        
+        g2.setColor(Color.BLACK);
+        g2.drawRect(screenX, screenY - 15, frameWidth, 3);
     }
     
     public Rectangle2D.Double bounds() {

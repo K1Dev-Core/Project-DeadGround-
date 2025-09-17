@@ -52,11 +52,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
         localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName);
         
-        for (int i = 0; i < 5; i++) {
-            int chickenX = (int)(Math.random() * (mapLoader.mapPixelW - 100)) + 50;
-            int chickenY = (int)(Math.random() * (mapLoader.mapPixelH - 100)) + 50;
-            chickens.add(new Chicken(chickenX, chickenY));
-        }
+        
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -183,6 +179,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
+        
 
         synchronized (otherPlayers) {
             ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
@@ -269,28 +266,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera, otherPlayers);
 
-            synchronized (chickens) {
-                ArrayList<Chicken> chickensToRemove = new ArrayList<>();
-                for (int i = 0; i < chickens.size(); i++) {
-                    Chicken chicken = chickens.get(i);
-                    if (chicken != null) {
-                        chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
-                        if (chicken.hp <= 0) {
-                            chickensToRemove.add(chicken);
-                        } else {
-                            ChickenData chickenData = new ChickenData(i, chicken.x, chicken.y);
-                            chickenData.hp = chicken.hp;
-                            chickenData.angle = chicken.angle;
-                            chickenData.isMoving = chicken.isMoving;
-                            chickenData.isHit = chicken.isHit;
-                            chickenData.isIdle = chicken.isIdle;
-                            chickenData.currentFrame = chicken.currentFrame;
-                            networkClient.sendChickenUpdate(chickenData);
-                        }
-                    }
-                }
-                chickens.removeAll(chickensToRemove);
-            }
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
@@ -317,25 +292,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     
                     Rectangle2D.Double bRect = blt.bounds();
                     
-                    synchronized (chickens) {
-                        ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
-                        for (Chicken chicken : chickensCopy) {
-                            if (chicken != null && chicken.hp > 0) {
-                                Rectangle2D.Double chickenRect = chicken.bounds();
-                                if (chickenRect.intersects(bRect)) {
-                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
-                                    bulletsToRemove.add(blt);
-                                    chicken.takeDamage(Config.BULLET_DAMAGE);
-                                    if (chicken.hp <= 0) {
-                                        if (localPlayer.hp < Config.PLAYER_HP) {
-                                            localPlayer.hp = Math.min(Config.PLAYER_HP, localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
                     
                     synchronized (otherPlayers) {
                         ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
@@ -353,12 +309,36 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             }
                         }
                     }
+                    
+                    
                 }
                 
                 for (Bullet blt : bulletsToRemove) {
                     bullets.remove(blt);
                 }
             }
+
+            synchronized (chickens) {
+                ArrayList<Chicken> chickensToRemove = new ArrayList<>();
+                for (Chicken chicken : chickens) {
+                    if (chicken != null) {
+                        chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
+                        if (chicken.hp <= 0) {
+                            chickensToRemove.add(chicken);
+                        }
+                    }
+                }
+                for (Chicken chicken : chickensToRemove) {
+                    chickens.remove(chicken);
+                }
+                
+                if (chickens.size() < 5) {
+                    int x = (int)(Math.random() * 800) + 100;
+                    int y = (int)(Math.random() * 500) + 100;
+                    chickens.add(new Chicken(chickens.size(), x, y));
+                }
+            }
+            
 
             synchronized (effects) {
                 ArrayList<HitEffect> effectsToRemove = new ArrayList<>();
@@ -520,6 +500,38 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
                 }
                 NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+            }
+        }
+    }
+    
+    public void updateChicken(ChickenData chickenData) {
+        synchronized (chickens) {
+            Chicken existingChicken = null;
+            for (Chicken chicken : chickens) {
+                if (chicken.id == chickenData.id) {
+                    existingChicken = chicken;
+                    break;
+                }
+            }
+            
+            if (existingChicken != null) {
+                existingChicken.x = chickenData.x;
+                existingChicken.y = chickenData.y;
+                existingChicken.hp = chickenData.hp;
+                existingChicken.angle = chickenData.angle;
+                existingChicken.isMoving = chickenData.isMoving;
+                existingChicken.isHit = chickenData.isHit;
+                existingChicken.isIdle = chickenData.isIdle;
+                existingChicken.currentFrame = chickenData.currentFrame;
+            } else {
+                Chicken newChicken = new Chicken(chickenData.id, chickenData.x, chickenData.y);
+                newChicken.hp = chickenData.hp;
+                newChicken.angle = chickenData.angle;
+                newChicken.isMoving = chickenData.isMoving;
+                newChicken.isHit = chickenData.isHit;
+                newChicken.isIdle = chickenData.isIdle;
+                newChicken.currentFrame = chickenData.currentFrame;
+                chickens.add(newChicken);
             }
         }
     }

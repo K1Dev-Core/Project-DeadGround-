@@ -14,8 +14,10 @@ import shared.*;
 public class ServerDebugUI extends JFrame {
     private JTextArea logArea;
     private JTable playerTable;
+    private JTable chickenTable;
     private JTable messageTable;
     private DefaultTableModel playerTableModel;
+    private DefaultTableModel chickenTableModel;
     private DefaultTableModel messageTableModel;
     private JLabel statusLabel;
     private JLabel statsLabel;
@@ -46,14 +48,14 @@ public class ServerDebugUI extends JFrame {
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         statusLabel = new JLabel("Server Status: Running");
         statusLabel.setForeground(Color.GREEN);
-        statsLabel = new JLabel("Messages: 0 | Hits: 0 | Bullets: 0");
+        statsLabel = new JLabel("Messages: 0 | Hits: 0 | Bullets: 0 | Chickens: 0");
         topPanel.add(statusLabel);
         topPanel.add(Box.createHorizontalStrut(20));
         topPanel.add(statsLabel);
         mainPanel.add(topPanel, BorderLayout.NORTH);
 
         
-        JPanel centerPanel = new JPanel(new GridLayout(1, 2));
+        JPanel centerPanel = new JPanel(new GridLayout(1, 3));
         
      
         JPanel playerPanel = new JPanel(new BorderLayout());
@@ -71,6 +73,20 @@ public class ServerDebugUI extends JFrame {
         playerPanel.add(playerScrollPane, BorderLayout.CENTER);
         centerPanel.add(playerPanel);
 
+        JPanel chickenPanel = new JPanel(new BorderLayout());
+        chickenPanel.setBorder(BorderFactory.createTitledBorder("Chickens"));
+        String[] chickenColumns = {"ID", "X", "Y", "HP", "Status", "Frame"};
+        chickenTableModel = new DefaultTableModel(chickenColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        chickenTable = new JTable(chickenTableModel);
+        chickenTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane chickenScrollPane = new JScrollPane(chickenTable);
+        chickenPanel.add(chickenScrollPane, BorderLayout.CENTER);
+        centerPanel.add(chickenPanel);
     
         JPanel messagePanel = new JPanel(new BorderLayout());
         messagePanel.setBorder(BorderFactory.createTitledBorder("Recent Messages"));
@@ -123,6 +139,7 @@ public class ServerDebugUI extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 updatePlayerTable();
+                updateChickenTable();
                 updateStats();
             }
         });
@@ -148,10 +165,38 @@ public class ServerDebugUI extends JFrame {
         });
     }
 
+    private void updateChickenTable() {
+        SwingUtilities.invokeLater(() -> {
+            chickenTableModel.setRowCount(0);
+            for (Map.Entry<Integer, ChickenData> entry : server.chickens.entrySet()) {
+                ChickenData chicken = entry.getValue();
+                if (chicken != null) {
+                    String status = chicken.hp <= 0 ? "DEAD" : 
+                                  chicken.isHit ? "HIT" : 
+                                  chicken.isMoving ? "MOVING" : "IDLE";
+                    chickenTableModel.addRow(new Object[]{
+                        chicken.id,
+                        chicken.x,
+                        chicken.y,
+                        chicken.hp,
+                        status,
+                        chicken.currentFrame
+                    });
+                }
+            }
+        });
+    }
+
     private void updateStats() {
         SwingUtilities.invokeLater(() -> {
+            int aliveChickens = 0;
+            for (ChickenData chicken : server.chickens.values()) {
+                if (chicken.hp > 0) {
+                    aliveChickens++;
+                }
+            }
             statsLabel.setText(String.format("Messages: %d | Hits: %d | Bullets: %d | Players: %d | Chickens: %d", 
-                messageCount, hitCount, bulletCount, server.players.size(), chickenCount));
+                messageCount, hitCount, bulletCount, server.players.size(), aliveChickens));
         });
     }
 

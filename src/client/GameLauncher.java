@@ -1,6 +1,5 @@
 package client;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -8,6 +7,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.Socket;
+import javax.swing.*;
 
 public class GameLauncher extends JFrame {
     private JTextField nameField;
@@ -57,8 +57,8 @@ public class GameLauncher extends JFrame {
         mainPanel.setLayout(null);
         setContentPane(mainPanel);
         
-        titleLabel = new JLabel("Project-DeadGround");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 48));
+        titleLabel = new JLabel("DeadGround");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 30));
         titleLabel.setForeground(Color.WHITE);
         titleLabel.setBounds(300, 80, 200, 60);
         mainPanel.add(titleLabel);

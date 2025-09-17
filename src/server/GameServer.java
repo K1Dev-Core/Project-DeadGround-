@@ -12,6 +12,7 @@ public class GameServer {
     private Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
     public Map<String, PlayerData> players = new ConcurrentHashMap<>();
     private Map<String, BotData> bots = new ConcurrentHashMap<>();
+    public Map<Integer, ChickenData> chickens = new ConcurrentHashMap<>();
     private boolean running = false;
     private int port;
     private Thread gameLoop;
@@ -32,6 +33,8 @@ public class GameServer {
             
             debugUI = new ServerDebugUI(this);
             debugUI.setVisible(true);
+            
+            spawnInitialChickens();
             
             System.out.println("=== Game Server Started ===");
             System.out.println("Port: " + port);
@@ -134,6 +137,8 @@ public class GameServer {
             long start = System.currentTimeMillis();
 
             cleanupDisconnectedClients();
+            updateChickens();
+            broadcastChickenUpdates();
 
             long dt = System.currentTimeMillis() - start;
             long sleep = Math.max(2, frameTime - dt);
@@ -141,6 +146,83 @@ public class GameServer {
                 Thread.sleep(sleep);
             } catch (InterruptedException e) {
                 break;
+            }
+        }
+    }
+    
+    private void spawnInitialChickens() {
+        for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
+            int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+            int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+            chickens.put(i, new ChickenData(i, x, y));
+            System.out.println("Spawned chicken " + i + " at " + x + ", " + y);
+        }
+    }
+    
+    private void updateChickens() {
+        for (ChickenData chicken : chickens.values()) {
+            if (chicken != null) {
+                if (chicken.hp > 0) {
+                    if (chicken.isHit) {
+                        chicken.isHit = false;
+                    }
+                    
+                    if (Math.random() < 0.02) {
+                        chicken.angle = Math.random() * Math.PI * 2;
+                    }
+                    
+                    if (!chicken.isIdle) {
+                        double velocityX = Math.cos(chicken.angle) * Config.CHICKEN_MOVEMENT_SPEED;
+                        double velocityY = Math.sin(chicken.angle) * Config.CHICKEN_MOVEMENT_SPEED;
+                        
+                        int newX = chicken.x + (int)velocityX;
+                        int newY = chicken.y + (int)velocityY;
+                        
+                    if (newX >= Config.CHICKEN_ZONE_X - Config.CHICKEN_ZONE_SIZE/2 && newX <= Config.CHICKEN_ZONE_X + Config.CHICKEN_ZONE_SIZE/2 && 
+                        newY >= Config.CHICKEN_ZONE_Y - Config.CHICKEN_ZONE_SIZE/2 && newY <= Config.CHICKEN_ZONE_Y + Config.CHICKEN_ZONE_SIZE/2) {
+                            chicken.x = newX;
+                            chicken.y = newY;
+                            chicken.isMoving = true;
+                        } else {
+                            chicken.angle = Math.random() * Math.PI * 2;
+                            chicken.isMoving = false;
+                        }
+                    } else {
+                        chicken.isMoving = false;
+                    }
+                    
+                    if (chicken.isHit) {
+                        chicken.currentFrame = (chicken.currentFrame + 1) % 5;
+                    } else if (chicken.isMoving) {
+                        chicken.currentFrame = (chicken.currentFrame + 1) % 14;
+                    } else {
+                        chicken.currentFrame = (chicken.currentFrame + 1) % 13;
+                    }
+                } else {
+                    chicken.respawnTimer--;
+                    if (chicken.respawnTimer <= 0) {
+                        int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                        int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                        chicken.x = x;
+                        chicken.y = y;
+                        chicken.hp = Config.CHICKEN_HP;
+                        chicken.isIdle = true;
+                        chicken.isHit = false;
+                        chicken.isMoving = false;
+                        chicken.currentFrame = 0;
+                        chicken.respawnTimer = Config.CHICKEN_RESPAWN_TIME * 60;
+                        System.out.println("Chicken " + chicken.id + " respawned at " + x + ", " + y);
+                    }
+                }
+            }
+        }
+    }
+    
+    private void broadcastChickenUpdates() {
+        for (ChickenData chicken : chickens.values()) {
+            if (chicken != null) {
+                NetworkMessage message = new NetworkMessage(NetworkMessage.CHICKEN_UPDATE, "", chicken);
+                broadcastToAll(message);
             }
         }
     }

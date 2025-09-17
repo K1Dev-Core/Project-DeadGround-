@@ -127,6 +127,24 @@ public class ClientHandler implements Runnable {
                         if (server.debugUI != null) {
                             server.debugUI.logBulletSpawn();
                         }
+                        
+                        for (ChickenData chicken : server.chickens.values()) {
+                            if (chicken != null && chicken.hp > 0) {
+                                double distance = Math.sqrt(Math.pow(bulletData.x - chicken.x, 2) + Math.pow(bulletData.y - chicken.y, 2));
+                                if (distance < 30) {
+                                    chicken.hp -= Config.BULLET_DAMAGE;
+                                    chicken.isIdle = false;
+                                    chicken.isHit = true;
+                                    chicken.currentFrame = 0;
+                                    server.debugUI.logMessage("Chicken " + chicken.id + " hit! HP: " + chicken.hp + " Distance: " + distance);
+                                    if (chicken.hp <= 0) {
+                                        server.debugUI.logChickenUpdate();
+                                        server.debugUI.logMessage("Chicken " + chicken.id + " died!");
+                                    }
+                                    break;
+                                }
+                            }
+                        }
                     } else {
                         System.err.println("Invalid BULLET_SPAWN data type: " + message.data.getClass());
                     }
