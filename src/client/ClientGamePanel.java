@@ -45,7 +45,22 @@ public class ClientGamePanel extends JPanel implements Runnable {
             new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
 
         mapLoader = new MapLoader();
-        mapLoader.load("assets/map/mappgameeeee.tmx");
+        try {
+            mapLoader.load("assets/map/mappgameeeee.tmx");
+            System.out.println("Map loaded successfully:");
+            System.out.println("  Map size: " + mapLoader.mapWidthTiles + "x" + mapLoader.mapHeightTiles + " tiles");
+            System.out.println("  Pixel size: " + mapLoader.mapPixelW + "x" + mapLoader.mapPixelH);
+            System.out.println("  Tile size: " + mapLoader.tileWidth + "x" + mapLoader.tileHeight);
+            System.out.println("  Layers: " + mapLoader.layers.size());
+            System.out.println("  Collisions: " + mapLoader.collisions.size());
+            for (int i = 0; i < mapLoader.layers.size(); i++) {
+                MapLoader.Layer layer = mapLoader.layers.get(i);
+                System.out.println("    Layer " + i + ": " + layer.name + " (" + layer.width + "x" + layer.height + ")");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to load map: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         try {
             customCursor = ImageIO.read(new File("assets/cursor/cursor.png"));
@@ -283,8 +298,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 if (gid == 0)
                     continue;
                 BufferedImage tile = mapLoader.tileset.getTile(gid);
-                if (tile == null)
+                if (tile == null) {
+                    System.out.println("DEBUG: Tile is null for gid " + gid + " at (" + c + "," + r + ")");
                     continue;
+                }
                 int x = c * mapLoader.tileWidth - camera.camX;
                 int y = r * mapLoader.tileHeight - camera.camY;
                 g2.drawImage(tile, x, y, null);

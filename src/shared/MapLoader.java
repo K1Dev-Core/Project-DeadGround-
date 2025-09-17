@@ -1,13 +1,13 @@
 package shared;
 
-import org.w3c.dom.*;
-import javax.imageio.ImageIO;
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.*;
 import java.util.*;
+import javax.imageio.ImageIO;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.*;
 
 public class MapLoader {
     public int mapWidthTiles, mapHeightTiles, tileWidth, tileHeight;
@@ -30,14 +30,75 @@ public class MapLoader {
         public BufferedImage getTile(int gid) {
             if (gid <= 0)
                 return null;
-            int local = gid - firstGid;
-            if (local < 0 || local >= tileCount)
+            
+            int flags = gid & 0xF0000000;
+            int cleanGid = gid & 0x0FFFFFFF;
+            
+            int local = cleanGid - firstGid;
+            if (local < 0 || local >= tileCount) {
+                System.out.println("DEBUG: GID " + gid + " (clean: " + cleanGid + ") out of range. firstGid=" + firstGid + ", tileCount=" + tileCount);
                 return null;
+            }
+            
             return cache.computeIfAbsent(gid, g -> {
                 int col = local % columns, row = local / columns;
                 int sx = col * tileWidth, sy = row * tileHeight;
-                return sheet.getSubimage(sx, sy, tileWidth, tileHeight);
+                
+                if (sx + tileWidth > sheet.getWidth() || sy + tileHeight > sheet.getHeight()) {
+                    System.out.println("DEBUG: Tile bounds exceeded for GID " + gid + " at (" + col + "," + row + ")");
+                    return null;
+                }
+                
+                BufferedImage tile = sheet.getSubimage(sx, sy, tileWidth, tileHeight);
+                
+                if ((flags & 0x80000000) != 0) {
+                    tile = flipHorizontal(tile);
+                }
+                if ((flags & 0x40000000) != 0) {
+                    tile = flipVertical(tile);
+                }
+                if ((flags & 0x20000000) != 0) {
+                    tile = flipDiagonal(tile);
+                }
+                
+                return tile;
             });
+        }
+        
+        private BufferedImage flipHorizontal(BufferedImage img) {
+            int w = img.getWidth();
+            int h = img.getHeight();
+            BufferedImage flipped = new BufferedImage(w, h, img.getType());
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    flipped.setRGB(w - 1 - x, y, img.getRGB(x, y));
+                }
+            }
+            return flipped;
+        }
+        
+        private BufferedImage flipVertical(BufferedImage img) {
+            int w = img.getWidth();
+            int h = img.getHeight();
+            BufferedImage flipped = new BufferedImage(w, h, img.getType());
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    flipped.setRGB(x, h - 1 - y, img.getRGB(x, y));
+                }
+            }
+            return flipped;
+        }
+        
+        private BufferedImage flipDiagonal(BufferedImage img) {
+            int w = img.getWidth();
+            int h = img.getHeight();
+            BufferedImage flipped = new BufferedImage(h, w, img.getType());
+            for (int x = 0; x < w; x++) {
+                for (int y = 0; y < h; y++) {
+                    flipped.setRGB(y, x, img.getRGB(x, y));
+                }
+            }
+            return flipped;
         }
     }
 
@@ -66,7 +127,15 @@ public class MapLoader {
         Path sheetPath = tmxPath.getParent().resolve(baseName);
         if (!Files.exists(sheetPath))
             sheetPath = Paths.get("assets").resolve(baseName);
-        t.sheet = ImageIO.read(sheetPath.toFile());
+        
+        System.out.println("Looking for tileset image: " + sheetPath);
+        if (Files.exists(sheetPath)) {
+            t.sheet = ImageIO.read(sheetPath.toFile());
+            System.out.println("Tileset loaded: " + t.sheet.getWidth() + "x" + t.sheet.getHeight());
+        } else {
+            System.err.println("Tileset image not found: " + sheetPath);
+            throw new Exception("Tileset image not found: " + sheetPath);
+        }
         tileset = t;
 
         NodeList layerNodes = map.getElementsByTagName("layer");
