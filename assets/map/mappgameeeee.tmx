@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="50" tilewidth="64" tileheight="64" infinite="0" nextlayerid="11" nextobjectid="62">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="50" height="50" tilewidth="64" tileheight="64" infinite="0" nextlayerid="11" nextobjectid="79">
  <tileset firstgid="1" name="kenney_top-down-shooter" tilewidth="64" tileheight="64" tilecount="540" columns="27">
   <image source="E:/Dowload/kenney_top-down-shooter/Tilesheet/tilesheet_complete.png" trans="ff00ff" width="1728" height="1280"/>
  </tileset>
@@ -358,7 +358,7 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,181,182,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,208,209,239,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,265,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,241,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,291,0,0,0,0,0,0,0,0,0,263,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,290,265,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,265,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -415,5 +415,18 @@
   <object id="58" x="1471.33" y="2880" width="446.667" height="60"/>
   <object id="59" x="320" y="2877.33" width="893.333" height="64"/>
   <object id="61" x="1536.67" y="512.667" width="126.667" height="192"/>
+  <object id="63" x="322" y="1602" width="122.5" height="249.5"/>
+  <object id="64" x="260" y="1732" width="122.5" height="249.5"/>
+  <object id="65" x="2115" y="1093" width="114" height="119"/>
+  <object id="66" x="2691" y="896" width="118" height="122"/>
+  <object id="69" x="2309.33" y="258.667" width="116" height="117.333"/>
+  <object id="70" x="129" y="127" width="131" height="63"/>
+  <object id="71" x="132" y="190" width="55" height="59"/>
+  <object id="72" x="2949" y="126" width="108" height="64"/>
+  <object id="73" x="3009" y="191" width="65" height="60"/>
+  <object id="74" x="3009" y="2942" width="59" height="128"/>
+  <object id="76" x="2948" y="3008" width="70" height="57"/>
+  <object id="77" x="124" y="3006" width="124" height="62"/>
+  <object id="78" x="132" y="2947" width="55" height="99"/>
  </objectgroup>
 </map>

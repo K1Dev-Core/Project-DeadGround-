@@ -50,17 +50,17 @@ public class ClientPlayer {
     public String playerId;
     public String playerName;
 
-    public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName)
+    public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName, String characterType)
             throws Exception {
         x = startX;
         y = startY;
         this.playerId = playerId;
         this.playerName = playerName;
 
-        stand = ImageIO.read(new File("assets/player/hitman1_stand.png"));
-        shoot = ImageIO.read(new File("assets/player/hitman1_gun.png"));
-        reload = ImageIO.read(new File("assets/player/hitman1_reload.png"));
-        meleeImage = ImageIO.read(new File("assets/player/hitman1_hold.png"));
+        stand = ImageIO.read(new File("assets/player/" + characterType + "stand.png"));
+        shoot = ImageIO.read(new File("assets/player/" + characterType + "machine.png"));
+        reload = ImageIO.read(new File("assets/player/" + characterType + "reload.png"));
+        meleeImage = ImageIO.read(new File("assets/player/" + characterType + "hold.png"));
 
         try {
             AudioInputStream ais1 = AudioSystem.getAudioInputStream(new File("assets/sfx/footsteps.wav"));

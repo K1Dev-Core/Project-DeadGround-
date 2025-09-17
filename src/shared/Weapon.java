@@ -44,10 +44,31 @@ public class Weapon {
         int drawX = x - cameraX;
         int drawY = y - cameraY;
         
-        g2.drawImage(image, drawX, drawY, 32, 32, null);
+        int originalWidth = image.getWidth();
+        int originalHeight = image.getHeight();
+        
+        int scale = 1;
+        int scaledWidth = originalWidth * scale;
+        int scaledHeight = originalHeight * scale;
+        
+        g2.setColor(new Color(0, 255, 0, 100));
+        g2.fillOval(drawX - 10, drawY - 10, scaledWidth + 20, scaledHeight + 20);
+        
+        g2.setColor(Color.GREEN);
+        g2.setStroke(new BasicStroke(2));
+        g2.drawOval(drawX - 10, drawY - 10, scaledWidth + 20, scaledHeight + 20);
+        
+        g2.drawImage(image, drawX, drawY, drawX + scaledWidth, drawY + scaledHeight, 
+                     0, 0, originalWidth, originalHeight, null);
     }
     
     public Rectangle2D.Double bounds() {
-        return new Rectangle2D.Double(x, y, 32, 32);
+        if (image == null) return new Rectangle2D.Double(x, y, 32, 32);
+        
+        int scale = 1;
+        int scaledWidth = image.getWidth() * scale;
+        int scaledHeight = image.getHeight() * scale;
+        
+        return new Rectangle2D.Double(x, y, scaledWidth, scaledHeight);
     }
 }

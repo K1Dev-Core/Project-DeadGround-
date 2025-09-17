@@ -37,10 +37,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     private NetworkClient networkClient;
 
-    public ClientGamePanel(String playerName, String playerId, String serverHost) throws Exception {
+    public ClientGamePanel(String playerName, String playerId, String serverHost, String characterType) throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
         setFocusable(true);
+       
+      
         requestFocusInWindow();
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
             new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
@@ -70,7 +72,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         }
 
         Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
-        localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName);
+        localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName, characterType);
         
         
 
@@ -644,7 +646,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 
                 Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, existingPositions);
                 ClientPlayer player = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null,
-                        playerData.id, playerData.name);
+                        playerData.id, playerData.name, "hitman1_");
                 otherPlayers.put(playerData.id, player);
                 NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
             }

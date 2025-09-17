@@ -52,7 +52,7 @@ public class NotificationSystem {
             int padding = 10;
 
 
-            g2.setColor(Color.BLACK);
+            g2.setColor(Color.WHITE);
             g2.drawString(n.message, screenWidth - textWidth - padding - 10, y);
 
             y += 25;
