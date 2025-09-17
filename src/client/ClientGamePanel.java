@@ -29,6 +29,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     private Thread loop;
     private boolean running = true;
+    private boolean showHUD = false;
+    private long gameStartTime;
+    private boolean showHUDHint = true;
 
     private NetworkClient networkClient;
 
@@ -100,6 +103,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     case KeyEvent.VK_R:
                         localPlayer.reloading = true;
                         break;
+                    case KeyEvent.VK_SPACE:
+                        showHUD = !showHUD;
+                        showHUDHint = false;
+                        break;
                 }
             }
             
@@ -127,6 +134,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
         networkClient.sendPlayerJoin(localPlayer.toPlayerData());
 
         NotificationSystem.addNotification("Connected to " + serverHost, Color.GREEN);
+        
+        gameStartTime = System.currentTimeMillis();
+        
+        for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
+            int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+            int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+            chickens.add(new Chicken(i, x, y));
+        }
 
         loop = new Thread(this, "game-loop");
         loop.start();
@@ -205,7 +220,19 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
         }
 
-        drawHUD(g2);
+        if (showHUD) {
+            drawHUD(g2);
+        }
+        drawDebugInfo(g2);
+        
+        long currentTime = System.currentTimeMillis();
+        long timeSinceStart = currentTime - gameStartTime;
+        
+        if (showHUDHint && timeSinceStart < 20000) {
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Font.BOLD, 14));
+            g2.drawString("Press SPACE to toggle HUD", 10, 30);
+        }
 
         NotificationSystem.drawNotifications(g2, getWidth(), getHeight());
 
@@ -310,6 +337,23 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         }
                     }
                     
+                    synchronized (chickens) {
+                        ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
+                        for (Chicken chicken : chickensCopy) {
+                            if (chicken != null && chicken.hp > 0) {
+                                Rectangle2D.Double chickenRect = chicken.bounds();
+                                if (chickenRect.intersects(bRect)) {
+                                    chicken.takeDamage(Config.BULLET_DAMAGE);
+                                    for (int j = 0; j < 5; j++) {
+                                        effects.add(new HitEffect((int) (chicken.x + Math.random() * 32), (int) (chicken.y + Math.random() * 32)));
+                                    }
+                                    bulletsToRemove.add(blt);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
                     
                 }
                 
@@ -332,9 +376,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     chickens.remove(chicken);
                 }
                 
-                if (chickens.size() < 5) {
-                    int x = (int)(Math.random() * 800) + 100;
-                    int y = (int)(Math.random() * 500) + 100;
+                if (chickens.size() < Config.CHICKEN_SPAWN_COUNT) {
+                    int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                    int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
                     chickens.add(new Chicken(chickens.size(), x, y));
                 }
             }
@@ -428,6 +472,15 @@ public class ClientGamePanel extends JPanel implements Runnable {
         }
     }
     
+    private void drawDebugInfo(Graphics2D g2) {
+    
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 12));
+        g2.drawString("X: " + (int)localPlayer.x, 15, getHeight() - 40);
+        g2.drawString("Y: " + (int)localPlayer.y, 15, getHeight() - 25);
+ 
+    }
+    
     private void drawDeathScreen(Graphics2D g2) {
         int screenWidth = getWidth();
         int screenHeight = getHeight();
@@ -515,6 +568,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
             
             if (existingChicken != null) {
+                int oldHp = existingChicken.hp;
                 existingChicken.x = chickenData.x;
                 existingChicken.y = chickenData.y;
                 existingChicken.hp = chickenData.hp;
@@ -523,7 +577,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 existingChicken.isHit = chickenData.isHit;
                 existingChicken.isIdle = chickenData.isIdle;
                 existingChicken.currentFrame = chickenData.currentFrame;
-            } else {
+                
+                if (chickenData.hp < oldHp && chickenData.hp > 0) {
+                    existingChicken.takeDamage(0);
+                }
+            } else if (chickenData.hp > 0) {
                 Chicken newChicken = new Chicken(chickenData.id, chickenData.x, chickenData.y);
                 newChicken.hp = chickenData.hp;
                 newChicken.angle = chickenData.angle;
@@ -555,7 +613,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         player.playDeathSound();
                         player.isDead = true;
                         player.deathSoundPlayed = true;
-                        localPlayer.kills++;
                     } else if (oldHp > player.hp && player.hp > 0) {
                         player.playDamageSound();
                     }
@@ -574,6 +631,15 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     if (!player.isDead) {
                         player.isDead = true;
                         player.deathTime = playerData.deathTime;
+                        for (int i = 0; i < 15; i++) {
+                            effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                        }
+                        synchronized (corpses) {
+                            corpses.add(new CorpseEffect((int) player.x, (int) player.y, player.playerName));
+                        }
+                        NotificationSystem.addNotification(player.playerName + " died!", Color.RED);
+                        player.playDeathSound();
+                        player.deathSoundPlayed = true;
                     }
                 } else {
                     if (player.isDead) {
@@ -624,3 +690,4 @@ public class ClientGamePanel extends JPanel implements Runnable {
     }
 
 }
+

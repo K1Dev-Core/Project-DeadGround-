@@ -135,7 +135,7 @@ public class Chicken {
     
     public void takeDamage(int damage) {
         hp -= damage;
-        hitCooldown = 30;
+        hitCooldown = 60;
         isHit = true;
         isIdle = false;
         

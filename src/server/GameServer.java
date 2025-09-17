@@ -137,8 +137,6 @@ public class GameServer {
             long start = System.currentTimeMillis();
 
             cleanupDisconnectedClients();
-            updateChickens();
-            broadcastChickenUpdates();
 
             long dt = System.currentTimeMillis() - start;
             long sleep = Math.max(2, frameTime - dt);
@@ -169,6 +167,7 @@ public class GameServer {
                     
                     if (Math.random() < 0.02) {
                         chicken.angle = Math.random() * Math.PI * 2;
+                        chicken.isIdle = false;
                     }
                     
                     if (!chicken.isIdle) {
@@ -178,8 +177,8 @@ public class GameServer {
                         int newX = chicken.x + (int)velocityX;
                         int newY = chicken.y + (int)velocityY;
                         
-                    if (newX >= Config.CHICKEN_ZONE_X - Config.CHICKEN_ZONE_SIZE/2 && newX <= Config.CHICKEN_ZONE_X + Config.CHICKEN_ZONE_SIZE/2 && 
-                        newY >= Config.CHICKEN_ZONE_Y - Config.CHICKEN_ZONE_SIZE/2 && newY <= Config.CHICKEN_ZONE_Y + Config.CHICKEN_ZONE_SIZE/2) {
+                        if (newX >= Config.CHICKEN_ZONE_X - Config.CHICKEN_ZONE_SIZE/2 && newX <= Config.CHICKEN_ZONE_X + Config.CHICKEN_ZONE_SIZE/2 && 
+                            newY >= Config.CHICKEN_ZONE_Y - Config.CHICKEN_ZONE_SIZE/2 && newY <= Config.CHICKEN_ZONE_Y + Config.CHICKEN_ZONE_SIZE/2) {
                             chicken.x = newX;
                             chicken.y = newY;
                             chicken.isMoving = true;
@@ -212,16 +211,17 @@ public class GameServer {
                         chicken.currentFrame = 0;
                         chicken.respawnTimer = Config.CHICKEN_RESPAWN_TIME * 60;
                         System.out.println("Chicken " + chicken.id + " respawned at " + x + ", " + y);
+                        broadcastChickenUpdates();
                     }
                 }
             }
         }
     }
     
-    private void broadcastChickenUpdates() {
+    public void broadcastChickenUpdates() {
         for (ChickenData chicken : chickens.values()) {
             if (chicken != null) {
-                NetworkMessage message = new NetworkMessage(NetworkMessage.CHICKEN_UPDATE, "", chicken);
+                NetworkMessage message = new NetworkMessage(NetworkMessage.CHICKEN_UPDATE, "", chicken, messageCounter.incrementAndGet());
                 broadcastToAll(message);
             }
         }
@@ -249,11 +249,23 @@ public class GameServer {
             
             if (player.hp <= 0) {
                 player.hp = 0;
+                player.isDead = true;
+                player.deathTime = System.currentTimeMillis();
                 debugUI.logMessage("Player " + playerId + " died!");
+                
+                for (Map.Entry<String, PlayerData> entry : players.entrySet()) {
+                    if (!entry.getKey().equals(playerId)) {
+                        entry.getValue().kills++;
+                    }
+                }
+                broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, "server", null, messageCounter.incrementAndGet()));
+                
                 executor.submit(() -> {
                     try {
-                        Thread.sleep(3000);
+                        Thread.sleep(Config.RESPAWN_TIME * 1000);
                         player.hp = Config.PLAYER_HP;
+                        player.isDead = false;
+                        player.deathTime = 0;
                         player.x = 200 + (int)(Math.random() * 400);
                         player.y = 200 + (int)(Math.random() * 400);
                         players.put(playerId, player);
