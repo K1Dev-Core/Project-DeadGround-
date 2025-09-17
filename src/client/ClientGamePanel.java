@@ -260,6 +260,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
         
         localPlayer.draw(g2, camera.camX, camera.camY, mousePoint, camera);
         
+        if (localPlayer.isGodMode) {
+            drawGodModeLines(g2);
+        }
+        
         if (localPlayer.hp <= 0) {
             drawDeathScreen(g2);
         }
@@ -646,7 +650,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 
                 Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, existingPositions);
                 ClientPlayer player = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null,
-                        playerData.id, playerData.name, "hitman1_");
+                        playerData.id, playerData.name, playerData.characterType);
                 otherPlayers.put(playerData.id, player);
                 NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
             }
@@ -737,6 +741,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.shooting = playerData.shooting;
                 player.reloading = playerData.reloading;
                 player.hasWeapon = playerData.hasWeapon;
+                player.isGodMode = playerData.isGodMode;
+                player.characterType = playerData.characterType;
                 
                 if (playerData.shooting && playerData.hasWeapon) {
                     player.playShootSound();
@@ -799,6 +805,43 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
                     }
                  
+                }
+            }
+        }
+    }
+    
+    private void drawGodModeLines(Graphics2D g2) {
+        g2.setColor(new Color(255, 255, 0, 200));
+        g2.setStroke(new BasicStroke(3));
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        
+        synchronized (otherPlayers) {
+            for (ClientPlayer player : otherPlayers.values()) {
+                if (player != null && player.hp > 0) {
+                    int startX = localPlayer.x - camera.camX;
+                    int startY = localPlayer.y - camera.camY;
+                    int endX = player.x - camera.camX;
+                    int endY = player.y - camera.camY;
+                 
+        
+                    System.out.println(player.hp);
+                    System.out.println(localPlayer.hp);
+                    System.out.println(player.x);
+                    System.out.println(localPlayer.x);
+                    System.out.println(player.y);
+                    System.out.println(localPlayer.y);
+                    
+                    g2.drawLine(startX, startY, endX, endY);
+                    
+                    double distance = Math.sqrt(Math.pow(player.x - localPlayer.x, 2) + Math.pow(player.y - localPlayer.y, 2));
+                    String distanceText = String.format("%.0f", distance);
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(distanceText);
+                    g2.setColor(Color.WHITE);
+                    g2.fillRect((startX + endX - textWidth) / 2 - 2, (startY + endY) / 2 - 15, textWidth + 4, 18);
+                    g2.setColor(Color.BLACK);
+                    g2.drawString(distanceText, (startX + endX - textWidth) / 2, (startY + endY) / 2 - 2);
+                    g2.setColor(new Color(255, 255, 0, 200));
                 }
             }
         }

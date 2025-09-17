@@ -58,7 +58,7 @@ public class ServerDebugUI extends JFrame {
      
         JPanel playerPanel = new JPanel(new BorderLayout());
         playerPanel.setBorder(BorderFactory.createTitledBorder("Connected Players"));
-        String[] playerColumns = {"Player ID", "Name", "X", "Y", "HP", "Ammo", "Status", "God Mode"};
+        String[] playerColumns = {"Player ID", "Name", "Character", "X", "Y", "HP", "Ammo", "Status", "God Mode"};
         playerTableModel = new DefaultTableModel(playerColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -147,6 +147,7 @@ public class ServerDebugUI extends JFrame {
                 playerTableModel.addRow(new Object[]{
                     player.id,
                     player.name,
+                    player.characterType,
                     String.format("%.1f", player.x),
                     String.format("%.1f", player.y),
                     player.hp,

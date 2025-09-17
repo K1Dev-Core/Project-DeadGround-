@@ -28,6 +28,7 @@ public class ClientPlayer {
     int reloadCooldown = 0;
     boolean reloading = false;
     boolean hasWeapon = false;
+    boolean isGodMode = false;
     int meleeCooldown = 0;
     BufferedImage meleeImage;
     
@@ -49,6 +50,7 @@ public class ClientPlayer {
 
     public String playerId;
     public String playerName;
+    public String characterType;
 
     public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName, String characterType)
             throws Exception {
@@ -56,6 +58,7 @@ public class ClientPlayer {
         y = startY;
         this.playerId = playerId;
         this.playerName = playerName;
+        this.characterType = characterType;
 
         stand = ImageIO.read(new File("assets/player/" + characterType + "stand.png"));
         shoot = ImageIO.read(new File("assets/player/" + characterType + "machine.png"));
@@ -353,8 +356,8 @@ public class ClientPlayer {
     }
 
     public PlayerData toPlayerData() {
-        PlayerData data = new PlayerData(playerId, playerName, x, y);
-        data.update(x, y, angle, hp, ammo, kills, shooting, reloading);
+        PlayerData data = new PlayerData(playerId, playerName, x, y, characterType);
+        data.update(x, y, angle, hp, ammo, kills, shooting, reloading, isGodMode);
         data.hasWeapon = hasWeapon;
         return data;
     }
@@ -376,6 +379,20 @@ public class ClientPlayer {
         if (!hasWeapon) {
             hasWeapon = true;
             ammo = Config.MAX_AMMO;
+            playPickupSound();
+        }
+    }
+    
+    public void playPickupSound() {
+        try {
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File("assets/sfx/pickup.wav"));
+            Clip pickupClip = AudioSystem.getClip();
+            pickupClip.open(audioInputStream);
+            FloatControl gainControl = (FloatControl) pickupClip.getControl(FloatControl.Type.MASTER_GAIN);
+
+            pickupClip.start();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
     
