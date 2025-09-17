@@ -22,6 +22,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private Map<String, Bot> bots = new HashMap<>();
     public java.util.List<HitEffect> effects = new ArrayList<>();
     public java.util.List<CorpseEffect> corpses = new ArrayList<>();
+    private java.util.List<Chicken> chickens = new ArrayList<>();
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -50,6 +51,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
         Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
         localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName);
+        
+        for (int i = 0; i < 5; i++) {
+            int chickenX = (int)(Math.random() * (mapLoader.mapPixelW - 100)) + 50;
+            int chickenY = (int)(Math.random() * (mapLoader.mapPixelH - 100)) + 50;
+            chickens.add(new Chicken(chickenX, chickenY));
+        }
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -168,6 +175,15 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
         }
 
+        synchronized (chickens) {
+            ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
+            for (Chicken chicken : chickensCopy) {
+                if (chicken != null) {
+                    chicken.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+
         synchronized (otherPlayers) {
             ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
             for (ClientPlayer player : playersCopy) {
@@ -253,6 +269,19 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera, otherPlayers);
 
+            synchronized (chickens) {
+                ArrayList<Chicken> chickensToRemove = new ArrayList<>();
+                for (Chicken chicken : chickens) {
+                    if (chicken != null) {
+                        chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
+                        if (chicken.hp <= 0) {
+                            chickensToRemove.add(chicken);
+                        }
+                    }
+                }
+                chickens.removeAll(chickensToRemove);
+            }
+
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
             }
@@ -277,6 +306,27 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     }
                     
                     Rectangle2D.Double bRect = blt.bounds();
+                    
+                    synchronized (chickens) {
+                        ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
+                        for (Chicken chicken : chickensCopy) {
+                            if (chicken != null && chicken.hp > 0) {
+                                Rectangle2D.Double chickenRect = chicken.bounds();
+                                if (chickenRect.intersects(bRect)) {
+                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
+                                    bulletsToRemove.add(blt);
+                                    chicken.takeDamage(Config.BULLET_DAMAGE);
+                                    if (chicken.hp <= 0) {
+                                        if (localPlayer.hp < Config.PLAYER_HP) {
+                                            localPlayer.hp = Math.min(Config.PLAYER_HP, localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
                     synchronized (otherPlayers) {
                         ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
                         for (ClientPlayer player : playersCopy) {
@@ -367,20 +417,21 @@ public class ClientGamePanel extends JPanel implements Runnable {
         int screenWidth = getWidth();
         int screenHeight = getHeight();
 
-
+        g2.setColor(new Color(0, 0, 0, 180));
+        g2.fillRect(0, 0, 250, 200);
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 14));
         int y = 20;
         g2.drawString("Online Players:", 10, y);
         y += 20;
-        g2.drawString(localPlayer.playerName + " (You)", 10, y);
+        g2.drawString(localPlayer.playerName + " (You) - Kills: " + localPlayer.kills, 10, y);
         y += 20;
         synchronized (otherPlayers) {
             ArrayList<ClientPlayer> playersCopy2 = new ArrayList<>(otherPlayers.values());
             for (ClientPlayer player : playersCopy2) {
                 if (player != null) {
-                    g2.drawString(player.playerName, 10, y);
+                    g2.drawString(player.playerName + " - Kills: " + player.kills, 10, y);
                     y += 20;
                 }
             }
@@ -482,6 +533,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         player.playDeathSound();
                         player.isDead = true;
                         player.deathSoundPlayed = true;
+                        localPlayer.kills++;
                     } else if (oldHp > player.hp && player.hp > 0) {
                         player.playDamageSound();
                     }
@@ -492,6 +544,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.y = (int) (player.y + (playerData.y - player.y) * lerpFactor);
                 player.angle = playerData.angle;
                 player.ammo = playerData.ammo;
+                player.kills = playerData.kills;
                 player.shooting = playerData.shooting;
                 player.reloading = playerData.reloading;
                 

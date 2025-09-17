@@ -11,6 +11,7 @@ public class PlayerData implements Serializable {
     public double angle;
     public int hp;
     public int ammo;
+    public int kills;
     public boolean shooting;
     public boolean reloading;
     public long lastUpdate;
@@ -25,6 +26,7 @@ public class PlayerData implements Serializable {
         this.angle = 0;
         this.hp = 100;
         this.ammo = 30;
+        this.kills = 0;
         this.shooting = false;
         this.reloading = false;
         this.lastUpdate = System.currentTimeMillis();
@@ -38,17 +40,19 @@ public class PlayerData implements Serializable {
         this.angle = 0;
         this.hp = 100;
         this.ammo = 30;
+        this.kills = 0;
         this.shooting = false;
         this.reloading = false;
         this.lastUpdate = System.currentTimeMillis();
     }
 
-    public void update(double x, double y, double angle, int hp, int ammo, boolean shooting, boolean reloading) {
+    public void update(double x, double y, double angle, int hp, int ammo, int kills, boolean shooting, boolean reloading) {
         this.x = x;
         this.y = y;
         this.angle = angle;
         this.hp = hp;
         this.ammo = ammo;
+        this.kills = kills;
         this.shooting = shooting;
         this.reloading = reloading;
         this.lastUpdate = System.currentTimeMillis();

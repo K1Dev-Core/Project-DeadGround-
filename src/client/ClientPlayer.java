@@ -16,6 +16,7 @@ import shared.*;
 public class ClientPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
+    int kills = 0;
     BufferedImage stand, shoot, reload;
     double angle = 0;
     int shootCooldown = 0;
@@ -336,7 +337,7 @@ public class ClientPlayer {
 
     public PlayerData toPlayerData() {
         PlayerData data = new PlayerData(playerId, playerName, x, y);
-        data.update(x, y, angle, hp, ammo, shooting, reloading);
+        data.update(x, y, angle, hp, ammo, kills, shooting, reloading);
         return data;
     }
     
