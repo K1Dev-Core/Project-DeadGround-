@@ -1,11 +1,13 @@
+package shared;
+
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
 public class Bullet {
-    double x, y;
-    double dx, dy;
-    BufferedImage img;
+    public double x, y;
+    public double dx, dy;
+    public BufferedImage img;
 
     public Bullet(double x, double y, double angle, BufferedImage img) {
         this.x = x;
@@ -19,7 +21,9 @@ public class Bullet {
         x += dx;
         y += dy;
         Rectangle2D.Double r = new Rectangle2D.Double(x, y, img.getWidth(), img.getHeight());
-        for (Rectangle2D.Double c : collisions) if (c.intersects(r)) return false;
+        for (Rectangle2D.Double c : collisions)
+            if (c.intersects(r))
+                return false;
         return !(x < -64 || y < -64 || x > mapW + 64 || y > mapH + 64);
     }
 
@@ -28,6 +32,6 @@ public class Bullet {
     }
 
     public void draw(Graphics2D g2, int camX, int camY) {
-        g2.drawImage(img, (int)(x - camX), (int)(y - camY), null);
+        g2.drawImage(img, (int) (x - camX), (int) (y - camY), null);
     }
 }

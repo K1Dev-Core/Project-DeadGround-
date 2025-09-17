@@ -1,3 +1,5 @@
+package shared;
+
 public class Config {
     public static final int FPS = 60;
 

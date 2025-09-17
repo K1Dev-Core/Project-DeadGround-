@@ -1,3 +1,5 @@
+package client;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -6,14 +8,16 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.*;
 import javax.imageio.ImageIO;
+import shared.*;
 
-public class GamePanel extends JPanel implements Runnable {
+public class ClientGamePanel extends JPanel implements Runnable {
     private MapLoader mapLoader;
     private Camera camera = new Camera();
 
-    private Player player;
+    public ClientPlayer localPlayer;
+    private Map<String, ClientPlayer> otherPlayers = new HashMap<>();
     private java.util.List<Bullet> bullets = new ArrayList<>();
-    private java.util.List<Bot> bots = new ArrayList<>();
+    private Map<String, Bot> bots = new HashMap<>();
     private java.util.List<HitEffect> effects = new ArrayList<>();
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -21,7 +25,9 @@ public class GamePanel extends JPanel implements Runnable {
     private Thread loop;
     private boolean running = true;
 
-    public GamePanel() throws Exception {
+    private NetworkClient networkClient;
+
+    public ClientGamePanel(String playerName, String playerId) throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
 
@@ -29,10 +35,7 @@ public class GamePanel extends JPanel implements Runnable {
         mapLoader.load("assets/map/mappgameeeee.tmx");
 
         bulletImg = ImageIO.read(new File("assets/gun/bullet.png"));
-        player = new Player(200, 200, bulletImg);
-
-        for (int i = 0; i < 3; i++)
-            spawnBotNearPlayer();
+        localPlayer = new ClientPlayer(200, 200, bulletImg, playerId, playerName);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -49,21 +52,28 @@ public class GamePanel extends JPanel implements Runnable {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    player.shooting = true;
+                    localPlayer.shooting = true;
                 }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    player.shooting = false;
+                    localPlayer.shooting = false;
                 }
             }
         });
 
+        // Initialize network client
+        networkClient = new NetworkClient(this);
+        networkClient.connect("localhost", 8888);
+        networkClient.sendPlayerJoin(localPlayer.toPlayerData());
+
+        // Show connection notification
+        NotificationSystem.addNotification("Connected to server", Color.GREEN);
+
         loop = new Thread(this, "game-loop");
         loop.start();
-
     }
 
     @Override
@@ -81,8 +91,14 @@ public class GamePanel extends JPanel implements Runnable {
         for (MapLoader.Layer layer : mapLoader.layers)
             drawLayer(g2, layer, startCol, startRow, endCol, endRow);
 
-        player.draw(g2, camera.camX, camera.camY);
-        for (Bot b : bots)
+        // Draw other players first
+        for (ClientPlayer player : otherPlayers.values())
+            player.draw(g2, camera.camX, camera.camY);
+
+        // Draw local player on top
+        localPlayer.draw(g2, camera.camX, camera.camY);
+
+        for (Bot b : bots.values())
             b.draw(g2, camera.camX, camera.camY);
         for (Bullet b : bullets)
             b.draw(g2, camera.camX, camera.camY);
@@ -90,6 +106,9 @@ public class GamePanel extends JPanel implements Runnable {
             e.draw(g2, camera.camX, camera.camY);
 
         drawHUD(g2);
+
+        // Draw notifications
+        NotificationSystem.drawNotifications(g2, getWidth(), getHeight());
 
         g2.dispose();
     }
@@ -120,13 +139,12 @@ public class GamePanel extends JPanel implements Runnable {
         while (running) {
             long start = System.currentTimeMillis();
 
-            player.update(mousePoint, bullets, mapLoader.collisions,
+            localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera);
 
-            for (Bot b : bots)
-                b.update(player, mapLoader.collisions,
-                        mapLoader.mapPixelW, mapLoader.mapPixelH);
+            // Send player update to server
+            networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
 
             Iterator<Bullet> it = bullets.iterator();
             while (it.hasNext()) {
@@ -136,16 +154,12 @@ public class GamePanel extends JPanel implements Runnable {
                     continue;
                 }
                 Rectangle2D.Double bRect = blt.bounds();
-                for (int i = 0; i < bots.size(); i++) {
-                    Bot bot = bots.get(i);
+                for (Bot bot : bots.values()) {
                     if (bot.bounds().intersects(bRect)) {
-                        bot.hp -= Config.BULLET_DAMAGE;
                         effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
                         it.remove();
-                        if (bot.hp <= 0) {
-                            bots.remove(i);
-                            spawnBotNearPlayer();
-                        }
+                        // Send bullet hit to server
+                        networkClient.sendBotHit(bot, Config.BULLET_DAMAGE);
                         break;
                     }
                 }
@@ -153,7 +167,7 @@ public class GamePanel extends JPanel implements Runnable {
 
             effects.removeIf(e -> !e.update());
 
-            camera.centerOn(player.getCenterX(), player.getCenterY(),
+            camera.centerOn(localPlayer.getCenterX(), localPlayer.getCenterY(),
                     getWidth(), getHeight(),
                     mapLoader.mapPixelW, mapLoader.mapPixelH);
 
@@ -164,35 +178,6 @@ public class GamePanel extends JPanel implements Runnable {
                 Thread.sleep(sleep);
             } catch (InterruptedException ignored) {
             }
-        }
-    }
-
-    private void spawnBotNearPlayer() {
-        try {
-            BufferedImage tmp = ImageIO.read(new File("assets/zombie1_stand.png"));
-            int bw = tmp.getWidth(), bh = tmp.getHeight();
-            Random rnd = new Random();
-
-            for (int tries = 0; tries < 30; tries++) {
-
-                double ang = rnd.nextDouble() * Math.PI * 2;
-                double dist = 200 + rnd.nextDouble() * 250;
-                int cx = player.getCenterX() + (int) (Math.cos(ang) * dist) - bw / 2;
-                int cy = player.getCenterY() + (int) (Math.sin(ang) * dist) - bh / 2;
-
-                Rectangle2D.Double botRect = new Rectangle2D.Double(cx, cy, bw, bh);
-
-                if (cx < 0 || cy < 0 || cx + bw > mapLoader.mapPixelW || cy + bh > mapLoader.mapPixelH)
-                    continue;
-                if (rectHitsCollision(botRect, mapLoader.collisions))
-                    continue;
-                System.out.println("x " + cx + " y " + cy);
-                bots.add(new Bot(cx, cy));
-                return;
-            }
-
-            bots.add(new Bot(mapLoader.mapPixelW / 2, mapLoader.mapPixelH / 2));
-        } catch (Exception ignored) {
         }
     }
 
@@ -227,13 +212,89 @@ public class GamePanel extends JPanel implements Runnable {
 
         g2.setColor(new Color(255, 200, 0));
         g2.setFont(new Font("Arial", Font.BOLD, 18));
-        g2.drawString(player.ammo + "/" + Config.MAX_AMMO, hudX, hudY);
+        g2.drawString(localPlayer.ammo + "/" + Config.MAX_AMMO, hudX, hudY);
 
-        if (player.reloading) {
+        if (localPlayer.reloading) {
             g2.setColor(new Color(255, 100, 100));
             g2.setFont(new Font("Arial", Font.BOLD, 12));
             g2.drawString("RELOADING...", hudX, hudY + 20);
         }
+
+        // Draw player list
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        int y = 20;
+        g2.drawString("Online Players:", 10, y);
+        y += 20;
+        g2.drawString(localPlayer.playerName + " (You)", 10, y);
+        y += 20;
+        for (ClientPlayer player : otherPlayers.values()) {
+            g2.drawString(player.playerName, 10, y);
+            y += 20;
+        }
     }
 
+    public void addPlayer(PlayerData playerData) {
+        try {
+            ClientPlayer player = new ClientPlayer((int) playerData.x, (int) playerData.y, bulletImg,
+                    playerData.id, playerData.name);
+            otherPlayers.put(playerData.id, player);
+            NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void removePlayer(String playerId) {
+        ClientPlayer player = otherPlayers.remove(playerId);
+        if (player != null) {
+            NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+        }
+    }
+
+    public void updatePlayer(PlayerData playerData) {
+        ClientPlayer player = otherPlayers.get(playerData.id);
+        if (player != null) {
+            player.x = (int) playerData.x;
+            player.y = (int) playerData.y;
+            player.angle = playerData.angle;
+            player.hp = playerData.hp;
+            player.ammo = playerData.ammo;
+            player.shooting = playerData.shooting;
+            player.reloading = playerData.reloading;
+        }
+    }
+
+    public void addBullet(BulletData bulletData) {
+        bullets.add(new Bullet(bulletData.x, bulletData.y, bulletData.angle, bulletImg));
+    }
+
+    public void addBot(BotData botData) {
+        try {
+            Bot bot = new Bot((int) botData.x, (int) botData.y);
+            bot.hp = botData.hp;
+            bot.angle = botData.angle;
+            bots.put(botData.id, bot);
+            NotificationSystem.addNotification("Zombie spawned nearby!", Color.ORANGE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void updateBot(BotData botData) {
+        Bot bot = bots.get(botData.id);
+        if (bot != null) {
+            bot.x = botData.x;
+            bot.y = botData.y;
+            bot.angle = botData.angle;
+            bot.hp = botData.hp;
+        }
+    }
+
+    public void removeBot(String botId) {
+        Bot bot = bots.remove(botId);
+        if (bot != null) {
+            NotificationSystem.addNotification("Zombie eliminated!", Color.CYAN);
+        }
+    }
 }

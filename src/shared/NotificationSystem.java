@@ -1,0 +1,68 @@
+package shared;
+
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+
+public class NotificationSystem {
+    private static List<Notification> notifications = new ArrayList<>();
+    private static long maxDisplayTime = 3000; // 3 seconds
+
+    public static class Notification {
+        public String message;
+        public long timestamp;
+        public Color color;
+
+        public Notification(String message, Color color) {
+            this.message = message;
+            this.color = color;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    public static void addNotification(String message) {
+        addNotification(message, Color.WHITE);
+    }
+
+    public static void addNotification(String message, Color color) {
+        notifications.add(new Notification(message, color));
+        // Keep only last 5 notifications
+        if (notifications.size() > 5) {
+            notifications.remove(0);
+        }
+    }
+
+    public static void drawNotifications(Graphics2D g2, int screenWidth, int screenHeight) {
+        // Remove expired notifications
+        notifications.removeIf(n -> System.currentTimeMillis() - n.timestamp > maxDisplayTime);
+
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        int y = 30;
+
+        for (int i = notifications.size() - 1; i >= 0; i--) {
+            Notification n = notifications.get(i);
+
+            // Calculate alpha based on age
+            long age = System.currentTimeMillis() - n.timestamp;
+            float alpha = Math.max(0.1f, 1.0f - (float) age / maxDisplayTime);
+
+            // Set color with alpha
+            Color colorWithAlpha = new Color(n.color.getRed(), n.color.getGreen(), n.color.getBlue(),
+                    (int) (alpha * 255));
+            g2.setColor(colorWithAlpha);
+
+            // Draw background
+            FontMetrics fm = g2.getFontMetrics();
+            int textWidth = fm.stringWidth(n.message);
+            int padding = 10;
+            g2.fillRoundRect(screenWidth - textWidth - padding * 2 - 10, y - fm.getHeight() + 5,
+                    textWidth + padding * 2, fm.getHeight() + 5, 5, 5);
+
+            // Draw text
+            g2.setColor(Color.BLACK);
+            g2.drawString(n.message, screenWidth - textWidth - padding - 10, y);
+
+            y += 25;
+        }
+    }
+}

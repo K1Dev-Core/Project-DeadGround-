@@ -1,3 +1,5 @@
+package shared;
+
 public class Camera {
     public int camX = 0, camY = 0;
 

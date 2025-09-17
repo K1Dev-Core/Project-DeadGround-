@@ -1,3 +1,5 @@
+package shared;
+
 import org.w3c.dom.*;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -15,20 +17,22 @@ public class MapLoader {
     public List<Rectangle2D.Double> collisions = new ArrayList<>();
 
     public static class Layer {
-        String name;
-        int width, height;
-        int[] gids;
+        public String name;
+        public int width, height;
+        public int[] gids;
     }
 
     public static class Tileset {
-        BufferedImage sheet;
-        int firstGid = 1, columns, tileWidth, tileHeight, tileCount;
-        Map<Integer, BufferedImage> cache = new HashMap<>();
+        public BufferedImage sheet;
+        public int firstGid = 1, columns, tileWidth, tileHeight, tileCount;
+        public Map<Integer, BufferedImage> cache = new HashMap<>();
 
-        BufferedImage getTile(int gid) {
-            if (gid <= 0) return null;
+        public BufferedImage getTile(int gid) {
+            if (gid <= 0)
+                return null;
             int local = gid - firstGid;
-            if (local < 0 || local >= tileCount) return null;
+            if (local < 0 || local >= tileCount)
+                return null;
             return cache.computeIfAbsent(gid, g -> {
                 int col = local % columns, row = local / columns;
                 int sx = col * tileWidth, sy = row * tileHeight;
@@ -60,7 +64,8 @@ public class MapLoader {
         String baseName = new File(((Element) ts.getElementsByTagName("image").item(0))
                 .getAttribute("source")).getName();
         Path sheetPath = tmxPath.getParent().resolve(baseName);
-        if (!Files.exists(sheetPath)) sheetPath = Paths.get("assets").resolve(baseName);
+        if (!Files.exists(sheetPath))
+            sheetPath = Paths.get("assets").resolve(baseName);
         t.sheet = ImageIO.read(sheetPath.toFile());
         tileset = t;
 
@@ -75,8 +80,11 @@ public class MapLoader {
                     .getTextContent().trim().split("\\s*,\\s*");
             int[] gids = new int[L.width * L.height];
             for (int k = 0; k < gids.length && k < parts.length; k++) {
-                try { gids[k] = Integer.parseInt(parts[k].trim()); }
-                catch (Exception e) { gids[k] = 0; }
+                try {
+                    gids[k] = Integer.parseInt(parts[k].trim());
+                } catch (Exception e) {
+                    gids[k] = 0;
+                }
             }
             L.gids = gids;
             layers.add(L);
@@ -85,7 +93,8 @@ public class MapLoader {
         NodeList objGroups = map.getElementsByTagName("objectgroup");
         for (int i = 0; i < objGroups.getLength(); i++) {
             Element og = (Element) objGroups.item(i);
-            if (!"Collision".equalsIgnoreCase(og.getAttribute("name"))) continue;
+            if (!"Collision".equalsIgnoreCase(og.getAttribute("name")))
+                continue;
             NodeList objs = og.getElementsByTagName("object");
             for (int j = 0; j < objs.getLength(); j++) {
                 Element o = (Element) objs.item(j);

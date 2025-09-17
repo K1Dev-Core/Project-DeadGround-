@@ -1,3 +1,5 @@
+package shared;
+
 import java.awt.*;
 
 public class HitEffect {
@@ -15,7 +17,7 @@ public class HitEffect {
     }
 
     public void draw(Graphics2D g2, int camX, int camY) {
-        int alpha = (int)(180 * (life / (double)Config.HIT_FX_LIFE));
+        int alpha = (int) (180 * (life / (double) Config.HIT_FX_LIFE));
         g2.setColor(new Color(255, 60, 60, Math.max(0, alpha)));
         g2.fillOval(x - camX - 6, y - camY - 6, 12, 12);
     }

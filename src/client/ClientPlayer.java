@@ -1,3 +1,5 @@
+package client;
+
 import javax.sound.sampled.*;
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -6,8 +8,9 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.List;
+import shared.*;
 
-public class Player {
+public class ClientPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
     BufferedImage stand, walk, shoot, reload;
@@ -27,10 +30,17 @@ public class Player {
     int frameCounter = 0;
     int frameIndex = 0;
 
-    public Player(int startX, int startY, BufferedImage bulletImg) throws Exception {
+    public String playerId;
+    public String playerName;
+
+    public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName)
+            throws Exception {
         x = startX;
         y = startY;
         this.bulletImg = bulletImg;
+        this.playerId = playerId;
+        this.playerName = playerName;
+
         stand = ImageIO.read(new File("assets/player/hitman1_stand.png"));
         walk = ImageIO.read(new File("assets/player/hitman1_hold.png"));
         shoot = ImageIO.read(new File("assets/player/hitman1_gun.png"));
@@ -164,7 +174,7 @@ public class Player {
         at.rotate(angle, img.getWidth() / 2.0, img.getHeight() / 2.0);
         g2.drawImage(img, at, null);
 
-        GamePanel.drawHpBar(g2, drawX, drawY, 60, hp);
+        drawHpBar(g2, drawX, drawY, 60, hp);
 
         // Debug lines
         g2.setColor(Color.RED);
@@ -181,5 +191,27 @@ public class Player {
 
         g2.setColor(Color.YELLOW);
         g2.drawLine(muzzleX, muzzleY, muzzleX + (int) (cos * 50), muzzleY + (int) (sin * 50));
+
+        // Draw player name
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 12));
+        FontMetrics fm = g2.getFontMetrics();
+        int nameWidth = fm.stringWidth(playerName);
+        g2.drawString(playerName, drawX + (img.getWidth() - nameWidth) / 2, drawY - 5);
+    }
+
+    public PlayerData toPlayerData() {
+        PlayerData data = new PlayerData(playerId, playerName, x, y);
+        data.update(x, y, angle, hp, ammo, shooting, reloading);
+        return data;
+    }
+
+    private void drawHpBar(Graphics2D g2, int drawX, int drawY, int width, int hp) {
+        g2.setColor(new Color(180, 0, 0));
+        g2.fillRect(drawX, drawY - 10, width, 5);
+        g2.setColor(new Color(30, 200, 60));
+        g2.fillRect(drawX, drawY - 10, (int) (width * (hp / 100.0)), 5);
+        g2.setColor(Color.black);
+        g2.drawRect(drawX, drawY - 10, width, 5);
     }
 }
