@@ -43,11 +43,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
         setFocusable(true);
         setDoubleBuffered(true);
         
-        if (Config.USE_ACCELERATED_GRAPHICS) {
-            System.setProperty("sun.java2d.opengl", Config.ENABLE_OPENGL ? "true" : "false");
-            System.setProperty("sun.java2d.d3d", "true");
-            System.setProperty("sun.java2d.ddforcevram", "true");
-        }
         
         requestFocusInWindow();
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
@@ -203,14 +198,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        if (Config.SMOOTH_MOVEMENT) {
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        }
 
         int viewW = getWidth();
         int viewH = getHeight();
@@ -351,22 +343,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
     @Override
     public void run() {
         long frameTime = 1000L / Config.FPS;
-        long lastTime = System.nanoTime();
-        long lastFpsTime = System.currentTimeMillis();
-        int frameCount = 0;
+        long lastTime = System.currentTimeMillis();
         
         while (running) {
-            long currentTime = System.nanoTime();
-            long deltaTime = (currentTime - lastTime) / 1_000_000;
+            long currentTime = System.currentTimeMillis();
+            long deltaTime = currentTime - lastTime;
             lastTime = currentTime;
-            
-            if (deltaTime < frameTime) {
-                try {
-                    Thread.sleep((frameTime - deltaTime) / 1_000_000);
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
 
             if (localPlayer.isDead && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
                 localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, otherPlayers);
@@ -527,8 +509,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
             
 
             synchronized (effects) {
+                ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
                 ArrayList<HitEffect> effectsToRemove = new ArrayList<>();
-                for (HitEffect e : effects) {
+                for (HitEffect e : effectsCopy) {
                     if (e != null && !e.update()) {
                         effectsToRemove.add(e);
                     }
@@ -556,10 +539,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             repaint();
             
-            frameCount++;
-            if (System.currentTimeMillis() - lastFpsTime >= 1000) {
-                lastFpsTime = System.currentTimeMillis();
-                frameCount = 0;
+            long targetTime = frameTime;
+            long sleep = Math.max(1, targetTime - deltaTime);
+            try {
+                if (sleep > 0) {
+                    Thread.sleep(sleep);
+                }
+            } catch (InterruptedException ignored) {
             }
         }
     }
