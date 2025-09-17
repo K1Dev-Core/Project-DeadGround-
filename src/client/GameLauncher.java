@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.Socket;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.sound.sampled.*;
 
 public class GameLauncher extends JFrame {
     private JTextField nameField;
@@ -27,6 +28,19 @@ public class GameLauncher extends JFrame {
     private JLabel characterNameLabel;
     private JButton prevCharacterButton;
     private JButton nextCharacterButton;
+    
+    private void playButtonSound() {
+        try {
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File("assets/sfx/button.wav"));
+            Clip buttonClip = AudioSystem.getClip();
+            buttonClip.open(audioInputStream);
+            FloatControl gainControl = (FloatControl) buttonClip.getControl(FloatControl.Type.MASTER_GAIN);
+            gainControl.setValue(-10.0f);
+            buttonClip.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     
     public GameLauncher() {
         initializeUI();

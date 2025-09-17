@@ -2,6 +2,10 @@ package shared;
 
 public class Config {
     public static final int FPS = 60;
+    public static final int VSYNC_ENABLED = 1;
+    public static final int FRAME_SKIP_THRESHOLD = 2;
+    public static final int TARGET_FPS = 60;
+    public static final int MAX_FRAME_TIME = 20;
 
     public static final int PLAYER_SPEED = 2;
     public static final int PLAYER_HP = 100;
@@ -21,6 +25,8 @@ public class Config {
 
     public static boolean SMOOTH_MOVEMENT = true;
     public static int RENDER_DISTANCE = 2;
+    public static boolean USE_ACCELERATED_GRAPHICS = true;
+    public static boolean ENABLE_OPENGL = false;
     
     public static int NETWORK_UPDATE_RATE = 1;
     public static double PLAYER_LERP_FACTOR = 0.8;

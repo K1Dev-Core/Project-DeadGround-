@@ -43,6 +43,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
         setFocusable(true);
         setDoubleBuffered(true);
         
+        if (Config.USE_ACCELERATED_GRAPHICS) {
+            System.setProperty("sun.java2d.opengl", Config.ENABLE_OPENGL ? "true" : "false");
+            System.setProperty("sun.java2d.d3d", "true");
+            System.setProperty("sun.java2d.ddforcevram", "true");
+            System.setProperty("sun.java2d.translaccel", "true");
+            System.setProperty("sun.java2d.ddscale", "true");
+        }
         
         requestFocusInWindow();
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
@@ -198,11 +205,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         
-        if (Config.SMOOTH_MOVEMENT) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        }
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
         int viewW = getWidth();
         int viewH = getHeight();
