@@ -270,6 +270,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
             for (ClientPlayer player : playersCopy) {
                 if (player != null) {
                     player.draw(g2, camera.camX, camera.camY, mousePoint, camera);
+                    if (player.isDashing) {
+                        player.drawDashEffect(g2, player.x - camera.camX, player.y - camera.camY);
+                    }
                 }
             }
         }

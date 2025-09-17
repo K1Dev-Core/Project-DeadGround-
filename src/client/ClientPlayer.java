@@ -260,6 +260,26 @@ public class ClientPlayer {
             e.printStackTrace();
         }
     }
+    
+    public void drawDashEffect(Graphics2D g2, int drawX, int drawY) {
+        g2.setColor(new Color(255, 255, 255, 150));
+        g2.setStroke(new BasicStroke(3));
+        
+        int centerX = drawX + stand.getWidth() / 2;
+        int centerY = drawY + stand.getHeight() / 2;
+        
+        double trailLength = 30;
+        double trailX = centerX - Math.cos(angle) * trailLength;
+        double trailY = centerY - Math.sin(angle) * trailLength;
+        
+        g2.drawLine(centerX, centerY, (int) trailX, (int) trailY);
+        
+        g2.setColor(new Color(255, 255, 255, 100));
+        g2.fillOval(centerX - 15, centerY - 15, 30, 30);
+        
+        g2.setColor(new Color(255, 255, 255, 200));
+        g2.fillOval(centerX - 8, centerY - 8, 16, 16);
+    }
 
     private void spawnBulletFromMuzzle(List<Bullet> bullets) {
         int centerX = getCenterX();
@@ -390,6 +410,10 @@ public class ClientPlayer {
         
         at.rotate(angle, img.getWidth() / 2.0, img.getHeight() / 2.0);
         g2.drawImage(img, at, null);
+        
+        if (isDashing) {
+            drawDashEffect(g2, drawX, drawY);
+        }
 
         drawHpBar(g2, drawX, drawY, 60, hp);
 
