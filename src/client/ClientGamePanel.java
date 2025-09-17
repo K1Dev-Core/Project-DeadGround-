@@ -4,7 +4,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.*;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import shared.*;
 
@@ -18,6 +20,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private Map<String, Bot> bots = new HashMap<>();
     public java.util.List<HitEffect> effects = new ArrayList<>();
     public java.util.List<CorpseEffect> corpses = new ArrayList<>();
+    private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
 
@@ -31,9 +34,17 @@ public class ClientGamePanel extends JPanel implements Runnable {
         setBackground(Color.black);
         setFocusable(true);
         requestFocusInWindow();
+        setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
+            new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
 
         mapLoader = new MapLoader();
         mapLoader.load("assets/map/mappgameeeee.tmx");
+
+        try {
+            customCursor = ImageIO.read(new File("assets/cursor/cursor.png"));
+        } catch (Exception e) {
+            customCursor = null;
+        }
 
         localPlayer = new ClientPlayer(200, 200, null, playerId, playerName);
 
@@ -140,12 +151,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
             ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
             for (ClientPlayer player : playersCopy) {
                 if (player != null) {
-                    player.draw(g2, camera.camX, camera.camY);
+                    player.draw(g2, camera.camX, camera.camY, mousePoint, camera);
                 }
             }
         }
 
-        localPlayer.draw(g2, camera.camX, camera.camY);
+        localPlayer.draw(g2, camera.camX, camera.camY, mousePoint, camera);
         
         if (localPlayer.hp <= 0) {
             drawDeathScreen(g2);
@@ -181,6 +192,22 @@ public class ClientGamePanel extends JPanel implements Runnable {
         drawHUD(g2);
 
         NotificationSystem.drawNotifications(g2, getWidth(), getHeight());
+
+        if (customCursor != null) {
+            g2.drawImage(customCursor, mousePoint.x - 16, mousePoint.y - 16, 32, 32, null);
+        }
+
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 14));
+        String ammoText;
+        if (localPlayer.reloading) {
+            ammoText = "RELOADING...";
+        } else {
+            ammoText = localPlayer.ammo + "/" + Config.MAX_AMMO;
+        }
+        FontMetrics fm = g2.getFontMetrics();
+        int textWidth = fm.stringWidth(ammoText);
+        g2.drawString(ammoText, mousePoint.x - textWidth/2, mousePoint.y - 25);
 
         g2.dispose();
     }
@@ -337,18 +364,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         int screenWidth = getWidth();
         int screenHeight = getHeight();
 
-        int hudX = screenWidth - 80;
-        int hudY = screenHeight - 30;
 
-        g2.setColor(new Color(255, 200, 0));
-        g2.setFont(new Font("Arial", Font.BOLD, 18));
-        g2.drawString(localPlayer.ammo + "/" + Config.MAX_AMMO, hudX, hudY);
-
-        if (localPlayer.reloading) {
-            g2.setColor(new Color(255, 100, 100));
-            g2.setFont(new Font("Arial", Font.BOLD, 12));
-            g2.drawString("RELOADING...", hudX, hudY + 20);
-        }
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 14));
@@ -453,6 +469,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             corpses.add(new CorpseEffect((int) player.x, (int) player.y, player.playerName));
                         }
                         NotificationSystem.addNotification(player.playerName + " died!", Color.RED);
+                        player.playDeathSound();
                     } else if (oldHp > player.hp) {
                 
                         player.playDamageSound();
@@ -487,7 +504,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         synchronized (bullets) {
             boolean exists = false;
             for (Bullet b : bullets) {
-                if (b != null && Math.abs(b.x - bulletData.x) < 5 && Math.abs(b.y - bulletData.y) < 5) {
+                if (b != null && Math.abs(b.x - bulletData.x) < 10 && Math.abs(b.y - bulletData.y) < 10) {
                     exists = true;
                     break;
                 }

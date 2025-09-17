@@ -258,7 +258,15 @@ public class NetworkClient {
         sendMessage(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, playerData.id, playerData, sequenceCounter.incrementAndGet()));
     }
 
+    private long lastBulletTime = 0;
+    
     public void sendBulletSpawn(BulletData bulletData) {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastBulletTime < 50) {
+            return;
+        }
+        lastBulletTime = currentTime;
+        
         sendMessage(new NetworkMessage(NetworkMessage.BULLET_SPAWN, gamePanel.localPlayer.playerId, bulletData, sequenceCounter.incrementAndGet()));
     }
     

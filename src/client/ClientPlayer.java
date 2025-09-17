@@ -18,6 +18,8 @@ public class ClientPlayer {
     double angle = 0;
     int shootCooldown = 0;
     boolean shooting = false;
+    boolean justShot = false;
+    boolean deathSoundPlayed = false;
 
     int ammo = Config.MAX_AMMO;
     int reloadCooldown = 0;
@@ -35,6 +37,7 @@ public class ClientPlayer {
     Clip shootClip;
     Clip reloadClip;
     Clip damageClip;
+    Clip deathClip;
 
         int frameCounter = 0;
 
@@ -81,6 +84,13 @@ public class ClientPlayer {
             damageClip.open(ais4);
         } catch (Exception ignore) {
         }
+
+        try {
+            AudioInputStream ais5 = AudioSystem.getAudioInputStream(new File("assets/sfx/death.wav"));
+            deathClip = AudioSystem.getClip();
+            deathClip.open(ais5);
+        } catch (Exception ignore) {
+        }
     }
 
     public void update(Point mouse,
@@ -93,6 +103,10 @@ public class ClientPlayer {
             if (!isDead) {
                 isDead = true;
                 deathTime = System.currentTimeMillis();
+                if (!deathSoundPlayed) {
+                    playDeathSound();
+                    deathSoundPlayed = true;
+                }
             }
             
             if (isDead && System.currentTimeMillis() - deathTime >= Config.RESPAWN_TIME * 1000) {
@@ -100,6 +114,7 @@ public class ClientPlayer {
                 ammo = Config.MAX_AMMO;
                 isDead = false;
                 deathTime = 0;
+                deathSoundPlayed = false;
             }
             return;
         }
@@ -165,7 +180,7 @@ public class ClientPlayer {
                     reloadClip.stop();
                 }
             }
-        } else if (shooting && shootCooldown == 0 && ammo > 0 && !isDead) {
+        } else if (shooting && shootCooldown == 0 && ammo > 0 && !isDead && !justShot) {
             spawnBulletFromMuzzle(bullets);
             ammo--;
             if (shootClip != null) {
@@ -175,12 +190,17 @@ public class ClientPlayer {
                 shootClip.start();
             }
             shootCooldown = Config.PLAYER_SHOOT_DELAY;
+            justShot = true;
         } else if (shooting && ammo == 0 && !reloading) {
             reloading = true;
             reloadCooldown = Config.RELOAD_TIME;
         }
         if (shootCooldown > 0)
             shootCooldown--;
+        
+        if (justShot && shootCooldown > 0) {
+            justShot = false;
+        }
 
         frameCounter++;
         if (frameCounter >= 15) {
@@ -244,7 +264,17 @@ public class ClientPlayer {
         }
     }
 
-    public void draw(Graphics2D g2, int camX, int camY) {
+    public void playDeathSound() {
+        if (deathClip != null) {
+            if (deathClip.isRunning()) {
+                deathClip.stop();
+            }
+            deathClip.setFramePosition(0);
+            deathClip.start();
+        }
+    }
+
+    public void draw(Graphics2D g2, int camX, int camY, Point mouse, Camera camera) {
         int drawX = x - camX;
         int drawY = y - camY;
 
@@ -275,26 +305,12 @@ public class ClientPlayer {
 
         drawHpBar(g2, drawX, drawY, 60, hp);
 
-        g2.setColor(Color.RED);
-        int centerX = getCenterX() - camX;
-        int centerY = getCenterY() - camY;
-
-        double cos = Math.cos(angle), sin = Math.sin(angle);
-        double muzzleDistance = 20;
-        int muzzleX = centerX + (int) (cos * muzzleDistance);
-        int muzzleY = centerY + (int) (sin * muzzleDistance);
-
-        g2.drawLine(centerX, centerY, muzzleX, muzzleY);
-        g2.fillOval(muzzleX - 2, muzzleY - 2, 4, 4);
-
-        g2.setColor(Color.YELLOW);
-        g2.drawLine(muzzleX, muzzleY, muzzleX + (int) (cos * 50), muzzleY + (int) (sin * 50));
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
         FontMetrics fm = g2.getFontMetrics();
         int nameWidth = fm.stringWidth(playerName);
-        g2.drawString(playerName, drawX + (img.getWidth() - nameWidth) / 2, drawY - 5);
+        g2.drawString(playerName, drawX + (img.getWidth() - nameWidth) / 2, drawY - 15);
     }
 
     public PlayerData toPlayerData() {
