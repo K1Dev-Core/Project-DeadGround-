@@ -14,7 +14,7 @@ public class Chicken {
     public int hp = Config.CHICKEN_HP;
     public double angle;
     public double velocityX, velocityY;
-    public double speed = 1.0;
+    public double speed = 0.5;
     public boolean isMoving = false;
     public boolean isHit = false;
     public int hitCooldown = 0;
@@ -68,7 +68,7 @@ public class Chicken {
             isHit = false;
             
             if (!isIdle) {
-                if (Math.random() < 0.02) {
+                if (Math.random() < 0.01) {
                     angle = Math.random() * Math.PI * 2;
                 }
                 
@@ -80,14 +80,25 @@ public class Chicken {
                 
                 Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, frameWidth, frameHeight);
                 
-                if (!Utils.rectHitsCollision(testRect, collisions) && 
-                    newX >= 0 && newY >= 0 && 
-                    newX < mapWidth - frameWidth && newY < mapHeight - frameHeight) {
+                boolean canMove = !Utils.rectHitsCollision(testRect, collisions);
+                boolean withinBounds = newX >= 50 && newY >= 50 && 
+                                    newX < mapWidth - frameWidth - 50 && 
+                                    newY < mapHeight - frameHeight - 50;
+                
+                if (canMove && withinBounds) {
                     x = (int) newX;
                     y = (int) newY;
                     isMoving = true;
                 } else {
-                    angle = Math.random() * Math.PI * 2;
+                    if (!withinBounds) {
+                        double centerX = mapWidth / 2.0;
+                        double centerY = mapHeight / 2.0;
+                        double dx = centerX - x;
+                        double dy = centerY - y;
+                        angle = Math.atan2(dy, dx);
+                    } else {
+                        angle = Math.random() * Math.PI * 2;
+                    }
                     isMoving = false;
                 }
             } else {

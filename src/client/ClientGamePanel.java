@@ -139,9 +139,25 @@ public class ClientGamePanel extends JPanel implements Runnable {
         gameStartTime = System.currentTimeMillis();
         
         for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
-            int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-            int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-            chickens.add(new Chicken(i, x, y));
+            int x, y;
+            boolean validPosition = false;
+            int attempts = 0;
+            
+            while (!validPosition && attempts < 50) {
+                x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                
+                Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
+                boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
+                                 x >= 50 && y >= 50 && 
+                                 x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
+                
+                if (canSpawn) {
+                    chickens.add(new Chicken(i, x, y));
+                    validPosition = true;
+                }
+                attempts++;
+            }
         }
 
         loop = new Thread(this, "game-loop");
@@ -392,9 +408,25 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 
                 for (int i = chickenRespawnTimes.size() - 1; i >= 0; i--) {
                     if (chickenCurrentTime - chickenRespawnTimes.get(i) >= Config.CHICKEN_RESPAWN_TIME * 1000) {
-                        int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                        int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                        chickens.add(new Chicken(chickens.size(), x, y));
+                        int x, y;
+                        boolean validPosition = false;
+                        int attempts = 0;
+                        
+                        while (!validPosition && attempts < 50) {
+                            x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                            y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                            
+                            Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
+                            boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
+                                             x >= 50 && y >= 50 && 
+                                             x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
+                            
+                            if (canSpawn) {
+                                chickens.add(new Chicken(chickens.size(), x, y));
+                                validPosition = true;
+                            }
+                            attempts++;
+                        }
                         chickenRespawnTimes.remove(i);
                     }
                 }
