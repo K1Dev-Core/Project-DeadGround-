@@ -27,7 +27,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     private NetworkClient networkClient;
 
-    public ClientGamePanel(String playerName, String playerId) throws Exception {
+    public ClientGamePanel(String playerName, String playerId, String serverHost) throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
 
@@ -66,11 +66,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
         // Initialize network client
         networkClient = new NetworkClient(this);
-        networkClient.connect("localhost", 8888);
+        networkClient.connect(serverHost, 8888);
         networkClient.sendPlayerJoin(localPlayer.toPlayerData());
 
         // Show connection notification
-        NotificationSystem.addNotification("Connected to server", Color.GREEN);
+        NotificationSystem.addNotification("Connected to " + serverHost, Color.GREEN);
 
         loop = new Thread(this, "game-loop");
         loop.start();

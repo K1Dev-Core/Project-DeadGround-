@@ -23,7 +23,11 @@ public class GameServer {
         try {
             serverSocket = new ServerSocket(port);
             running = true;
-            System.out.println("Server started on port " + port);
+            System.out.println("=== Game Server Started ===");
+            System.out.println("Port: " + port);
+            System.out.println("Local IP: " + getLocalIPAddress());
+            System.out.println("Waiting for connections...");
+            System.out.println("================================");
 
             // Spawn initial bots
             spawnInitialBots();
@@ -40,6 +44,15 @@ public class GameServer {
         } catch (IOException e) {
             System.err.println("Server error: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private String getLocalIPAddress() {
+        try {
+            java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
+            return localHost.getHostAddress();
+        } catch (Exception e) {
+            return "Unknown";
         }
     }
 

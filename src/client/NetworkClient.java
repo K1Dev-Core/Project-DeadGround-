@@ -30,9 +30,9 @@ public class NetworkClient {
             receiveThread = new Thread(this::receiveMessages);
             receiveThread.start();
 
-            System.out.println("Connected to server successfully");
+            System.out.println("Connected to server successfully at " + host + ":" + port);
         } catch (IOException e) {
-            System.err.println("Could not connect to server: " + e.getMessage());
+            System.err.println("Could not connect to server at " + host + ":" + port + " - " + e.getMessage());
             e.printStackTrace();
         }
     }

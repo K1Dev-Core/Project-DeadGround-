@@ -16,11 +16,18 @@ public class Main {
                     return;
                 }
 
+                // แสดงหน้าจอเลือกเซิร์ฟเวอร์
+                String serverHost = ServerConnectionDialog.showDialog(f);
+                if (serverHost == null) {
+                    System.exit(0);
+                    return;
+                }
+
                 // สร้าง ID สำหรับผู้เล่น
                 String playerId = "player_" + System.currentTimeMillis();
 
                 // เริ่มเกม
-                ClientGamePanel panel = new ClientGamePanel(playerName, playerId);
+                ClientGamePanel panel = new ClientGamePanel(playerName, playerId, serverHost);
                 f.setContentPane(panel);
                 f.pack();
                 f.setVisible(true);
