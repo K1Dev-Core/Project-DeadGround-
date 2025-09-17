@@ -17,7 +17,7 @@ public class ClientPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
     int kills = 0;
-    BufferedImage stand, shoot, reload;
+    BufferedImage stand, shoot, reload, gunStand;
     double angle = 0;
     int shootCooldown = 0;
     boolean shooting = false;
@@ -70,6 +70,7 @@ public class ClientPlayer {
         shoot = ImageIO.read(new File("assets/player/" + characterType + "machine.png"));
         reload = ImageIO.read(new File("assets/player/" + characterType + "reload.png"));
         meleeImage = ImageIO.read(new File("assets/player/" + characterType + "hold.png"));
+        gunStand = ImageIO.read(new File("assets/player/" + characterType + "reload.png"));
 
         try {
             AudioInputStream ais1 = AudioSystem.getAudioInputStream(new File("assets/sfx/footsteps.wav"));
@@ -369,6 +370,8 @@ public class ClientPlayer {
             img = shoot;
         } else if (shooting && !hasWeapon) {
             img = meleeImage;
+        } else if (hasWeapon) {
+            img = gunStand;
         } else {
             img = stand;
         }
