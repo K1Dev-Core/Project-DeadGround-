@@ -207,18 +207,16 @@ public class NetworkClient {
                 if (message.data instanceof PlayerData) {
                     PlayerData updateData = (PlayerData) message.data;
                     if (updateData.id.equals(gamePanel.localPlayer.playerId)) {
-                
                         int oldHp = gamePanel.localPlayer.hp;
                         gamePanel.localPlayer.hp = updateData.hp;
+                        gamePanel.localPlayer.kills = updateData.kills;
                         
                         if (oldHp != gamePanel.localPlayer.hp) {
                             if (gamePanel.localPlayer.hp <= 0) {
-                             
                                 for (int i = 0; i < 20; i++) {
                                     gamePanel.effects.add(new HitEffect((int) (gamePanel.localPlayer.x + Math.random() * 64), (int) (gamePanel.localPlayer.y + Math.random() * 64)));
                                 }
                                 NotificationSystem.addNotification("YOU DIED!", Color.RED);
-                              
                                 gamePanel.localPlayer.hp = 0;
                             } 
                         }

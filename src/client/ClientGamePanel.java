@@ -23,6 +23,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public java.util.List<HitEffect> effects = new ArrayList<>();
     public java.util.List<CorpseEffect> corpses = new ArrayList<>();
     private java.util.List<Chicken> chickens = new ArrayList<>();
+    private java.util.List<Long> chickenRespawnTimes = new ArrayList<>();
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -343,11 +344,18 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             if (chicken != null && chicken.hp > 0) {
                                 Rectangle2D.Double chickenRect = chicken.bounds();
                                 if (chickenRect.intersects(bRect)) {
+                                    int oldHp = chicken.hp;
                                     chicken.takeDamage(Config.BULLET_DAMAGE);
                                     for (int j = 0; j < 5; j++) {
                                         effects.add(new HitEffect((int) (chicken.x + Math.random() * 32), (int) (chicken.y + Math.random() * 32)));
                                     }
                                     bulletsToRemove.add(blt);
+                                    
+                                    if (chicken.hp <= 0 && oldHp > 0) {
+                                        if (localPlayer.hp < Config.PLAYER_HP) {
+                                            localPlayer.hp = Math.min(Config.PLAYER_HP, localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
+                                        }
+                                    }
                                     break;
                                 }
                             }
@@ -364,22 +372,31 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             synchronized (chickens) {
                 ArrayList<Chicken> chickensToRemove = new ArrayList<>();
-                for (Chicken chicken : chickens) {
+                ArrayList<Long> respawnTimesToRemove = new ArrayList<>();
+                long chickenCurrentTime = System.currentTimeMillis();
+                
+                for (int i = 0; i < chickens.size(); i++) {
+                    Chicken chicken = chickens.get(i);
                     if (chicken != null) {
                         chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
                         if (chicken.hp <= 0) {
                             chickensToRemove.add(chicken);
+                            chickenRespawnTimes.add(chickenCurrentTime);
                         }
                     }
                 }
+                
                 for (Chicken chicken : chickensToRemove) {
                     chickens.remove(chicken);
                 }
                 
-                if (chickens.size() < Config.CHICKEN_SPAWN_COUNT) {
-                    int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                    int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                    chickens.add(new Chicken(chickens.size(), x, y));
+                for (int i = chickenRespawnTimes.size() - 1; i >= 0; i--) {
+                    if (chickenCurrentTime - chickenRespawnTimes.get(i) >= Config.CHICKEN_RESPAWN_TIME * 1000) {
+                        int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                        int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                        chickens.add(new Chicken(chickens.size(), x, y));
+                        chickenRespawnTimes.remove(i);
+                    }
                 }
             }
             

@@ -258,7 +258,10 @@ public class GameServer {
                         entry.getValue().kills++;
                     }
                 }
-                broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, "server", null, messageCounter.incrementAndGet()));
+                
+                for (Map.Entry<String, PlayerData> entry : players.entrySet()) {
+                    broadcastToAll(new NetworkMessage(NetworkMessage.PLAYER_UPDATE, entry.getKey(), entry.getValue(), messageCounter.incrementAndGet()));
+                }
                 
                 executor.submit(() -> {
                     try {

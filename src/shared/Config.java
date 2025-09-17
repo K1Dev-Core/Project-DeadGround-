@@ -32,6 +32,7 @@ public class Config {
     public static int CHICKEN_ZONE_X = 1000;
     public static int CHICKEN_ZONE_Y = 1200;
     public static int CHICKEN_ZONE_SIZE = 200;
-    public static int CHICKEN_RESPAWN_TIME = 60;
+    public static int CHICKEN_RESPAWN_TIME = 300;
     public static int CHICKEN_MOVEMENT_SPEED = 1;
+    public static int CHICKEN_HEAL_AMOUNT = 30;
 }

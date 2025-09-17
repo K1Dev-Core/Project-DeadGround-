@@ -114,6 +114,9 @@ public class ClientHandler implements Runnable {
                     if (message.data instanceof PlayerData) {
                         PlayerData updateData = (PlayerData) message.data;
                         server.updatePlayer(updateData);
+                        if (server.debugUI != null) {
+                            server.debugUI.logNetworkMessage(message);
+                        }
                     } else {
                         System.err.println("Invalid PLAYER_UPDATE data type: " + message.data.getClass());
                     }
@@ -138,7 +141,6 @@ public class ClientHandler implements Runnable {
                                     chicken.currentFrame = 0;
                                     server.debugUI.logMessage("Chicken " + chicken.id + " hit! HP: " + chicken.hp + " Distance: " + distance);
                                     if (chicken.hp <= 0) {
-                                        server.debugUI.logChickenUpdate();
                                         server.debugUI.logMessage("Chicken " + chicken.id + " died!");
                                     }
                                     break;
