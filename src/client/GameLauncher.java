@@ -21,8 +21,8 @@ public class GameLauncher extends JFrame {
     private JLabel subtitleLabel;
     
    
-    private final String[] characterTypes = {"hitman1_", "manBrown_", "soldier1_", "womanGreen_"};
-    private final String[] characterNames = {"Hitman", "Brown Man", "Soldier", "Green Woman"};
+    private final String[] characterTypes = {"hitman1_", "manBrown_", "soldier1_","robot1_" "womanGreen_","manOld_","survivor1_","zoimbie1_"};
+    private final String[] characterNames = {"Hitman", "Brown Man", "Soldier", "Robot", "Green Woman", "Man Old", "Survivor", "Zombie"};
     private int selectedCharacterIndex = 0;
     private JLabel characterPreviewLabel;
     private JLabel characterNameLabel;
