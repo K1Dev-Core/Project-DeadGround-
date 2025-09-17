@@ -358,6 +358,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
             }
+            
+         
+            if (networkClient != null && networkClient.lastPlayerData != null) {
+                localPlayer.isGodMode = networkClient.lastPlayerData.isGodMode;
+            }
 
             synchronized (bullets) {
                 ArrayList<Bullet> bulletsToRemove = new ArrayList<>();
@@ -822,14 +827,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     int startY = localPlayer.y - camera.camY;
                     int endX = player.x - camera.camX;
                     int endY = player.y - camera.camY;
-                 
-        
-                    System.out.println(player.hp);
-                    System.out.println(localPlayer.hp);
-                    System.out.println(player.x);
-                    System.out.println(localPlayer.x);
-                    System.out.println(player.y);
-                    System.out.println(localPlayer.y);
                     
                     g2.drawLine(startX, startY, endX, endY);
                     

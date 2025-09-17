@@ -21,6 +21,7 @@ public class NetworkClient {
     private AtomicInteger sequenceCounter = new AtomicInteger(0);
     private long lastPingTime = 0;
     private long ping = 0;
+    public PlayerData lastPlayerData = null;
 
     public NetworkClient(ClientGamePanel gamePanel) {
         this.gamePanel = gamePanel;
@@ -207,9 +208,11 @@ public class NetworkClient {
                 if (message.data instanceof PlayerData) {
                     PlayerData updateData = (PlayerData) message.data;
                     if (updateData.id.equals(gamePanel.localPlayer.playerId)) {
+                        lastPlayerData = updateData;
                         int oldHp = gamePanel.localPlayer.hp;
                         gamePanel.localPlayer.hp = updateData.hp;
                         gamePanel.localPlayer.kills = updateData.kills;
+                        gamePanel.localPlayer.isGodMode = updateData.isGodMode;
                         
                         if (oldHp != gamePanel.localPlayer.hp) {
                             if (gamePanel.localPlayer.hp <= 0) {
