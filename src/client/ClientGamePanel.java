@@ -171,20 +171,20 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
         }
 
-        synchronized (bullets) {
-            ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
-            for (Bullet b : bulletsCopy) {
-                if (b != null) {
-                    b.draw(g2, camera.camX, camera.camY);
-                }
-            }
-        }
-        
         synchronized (effects) {
             ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
             for (HitEffect e : effectsCopy) {
                 if (e != null) {
                     e.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+
+        synchronized (bullets) {
+            ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
+            for (Bullet b : bulletsCopy) {
+                if (b != null) {
+                    b.draw(g2, camera.camX, camera.camY);
                 }
             }
         }
@@ -277,7 +277,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     synchronized (otherPlayers) {
                         ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
                         for (ClientPlayer player : playersCopy) {
-                            if (player != null && player.hp > 0) {
+                            if (player != null && player.hp > 0 && !player.playerId.equals(localPlayer.playerId)) {
                                 Rectangle2D.Double playerRect = player.bounds();
                                 if (playerRect.intersects(bRect)) {
                                     System.out.println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
@@ -461,7 +461,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.hp = playerData.hp;
                 
                 if (oldHp != player.hp) {
-                    if (player.hp <= 0 && oldHp > 0) {
+                    if (player.hp <= 0 && oldHp > 0 && !player.isDead) {
                         for (int i = 0; i < 15; i++) {
                             effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
                         }
@@ -470,8 +470,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         }
                         NotificationSystem.addNotification(player.playerName + " died!", Color.RED);
                         player.playDeathSound();
-                    } else if (oldHp > player.hp) {
-                
+                        player.isDead = true;
+                    } else if (oldHp > player.hp && player.hp > 0) {
                         player.playDamageSound();
                     }
                 }
