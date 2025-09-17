@@ -150,8 +150,13 @@ public class GameServer {
     
     private void spawnInitialChickens() {
         for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
-            int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-            int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+            int[] zone = Config.CHICKEN_SPAWN_ZONES[i % Config.CHICKEN_SPAWN_ZONES.length];
+            int zoneX = zone[0];
+            int zoneY = zone[1];
+            int zoneSize = zone[2];
+            
+            int x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
+            int y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
             chickens.put(i, new ChickenData(i, x, y));
             System.out.println("Spawned chicken " + i + " at " + x + ", " + y);
         }
@@ -177,8 +182,19 @@ public class GameServer {
                         int newX = chicken.x + (int)velocityX;
                         int newY = chicken.y + (int)velocityY;
                         
-                        if (newX >= Config.CHICKEN_ZONE_X - Config.CHICKEN_ZONE_SIZE/2 && newX <= Config.CHICKEN_ZONE_X + Config.CHICKEN_ZONE_SIZE/2 && 
-                            newY >= Config.CHICKEN_ZONE_Y - Config.CHICKEN_ZONE_SIZE/2 && newY <= Config.CHICKEN_ZONE_Y + Config.CHICKEN_ZONE_SIZE/2) {
+                        boolean withinAnyZone = false;
+                        for (int[] zone : Config.CHICKEN_SPAWN_ZONES) {
+                            int zoneX = zone[0];
+                            int zoneY = zone[1];
+                            int zoneSize = zone[2];
+                            if (newX >= zoneX - zoneSize/2 && newX <= zoneX + zoneSize/2 &&
+                                newY >= zoneY - zoneSize/2 && newY <= zoneY + zoneSize/2) {
+                                withinAnyZone = true;
+                                break;
+                            }
+                        }
+                        
+                        if (withinAnyZone) {
                             chicken.x = newX;
                             chicken.y = newY;
                             chicken.isMoving = true;
@@ -200,8 +216,13 @@ public class GameServer {
                 } else {
                     chicken.respawnTimer--;
                     if (chicken.respawnTimer <= 0) {
-                        int x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                        int y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                        int[] zone = Config.CHICKEN_SPAWN_ZONES[(int)(Math.random() * Config.CHICKEN_SPAWN_ZONES.length)];
+                        int zoneX = zone[0];
+                        int zoneY = zone[1];
+                        int zoneSize = zone[2];
+                        
+                        int x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
+                        int y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
                         chicken.x = x;
                         chicken.y = y;
                         chicken.hp = Config.CHICKEN_HP;

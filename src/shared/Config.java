@@ -28,11 +28,16 @@ public class Config {
     public static int RESPAWN_SAFE_DISTANCE = 100;
     public static int RESPAWN_ATTEMPTS = 50;
     public static int CHICKEN_HP = 80;
-    public static int CHICKEN_SPAWN_COUNT = 7;
-    public static int CHICKEN_ZONE_X = 1000;
-    public static int CHICKEN_ZONE_Y = 1200;
-    public static int CHICKEN_ZONE_SIZE = 200;
+    public static int CHICKEN_SPAWN_COUNT = 15;
     public static int CHICKEN_RESPAWN_TIME = 300;
     public static int CHICKEN_MOVEMENT_SPEED = 1;
     public static int CHICKEN_HEAL_AMOUNT = 30;
+    
+    public static int[][] CHICKEN_SPAWN_ZONES = {
+        {1000, 1200, 200},
+    
+        {1500, 600, 180},
+        {800, 1800, 160},
+        {1323, 1700, 120}
+    };
 }

@@ -81,20 +81,39 @@ public class Chicken {
                 Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, frameWidth, frameHeight);
                 
                 boolean canMove = !Utils.rectHitsCollision(testRect, collisions);
+                boolean withinAnyZone = false;
+                for (int[] zone : Config.CHICKEN_SPAWN_ZONES) {
+                    int zoneX = zone[0];
+                    int zoneY = zone[1];
+                    int zoneSize = zone[2];
+                    if (newX >= zoneX - zoneSize/2 && newX <= zoneX + zoneSize/2 &&
+                        newY >= zoneY - zoneSize/2 && newY <= zoneY + zoneSize/2) {
+                        withinAnyZone = true;
+                        break;
+                    }
+                }
+                
                 boolean withinBounds = newX >= 50 && newY >= 50 && 
                                     newX < mapWidth - frameWidth - 50 && 
                                     newY < mapHeight - frameHeight - 50;
                 
-                if (canMove && withinBounds) {
+                if (canMove && withinBounds && withinAnyZone) {
                     x = (int) newX;
                     y = (int) newY;
                     isMoving = true;
                 } else {
-                    if (!withinBounds) {
-                        double centerX = mapWidth / 2.0;
-                        double centerY = mapHeight / 2.0;
-                        double dx = centerX - x;
-                        double dy = centerY - y;
+                    if (!withinAnyZone) {
+                        int[] nearestZone = Config.CHICKEN_SPAWN_ZONES[0];
+                        double minDist = Double.MAX_VALUE;
+                        for (int[] zone : Config.CHICKEN_SPAWN_ZONES) {
+                            double dist = Math.sqrt(Math.pow(x - zone[0], 2) + Math.pow(y - zone[1], 2));
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearestZone = zone;
+                            }
+                        }
+                        double dx = nearestZone[0] - x;
+                        double dy = nearestZone[1] - y;
                         angle = Math.atan2(dy, dx);
                     } else {
                         angle = Math.random() * Math.PI * 2;

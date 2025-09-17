@@ -159,8 +159,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
             int attempts = 0;
             
             while (!validPosition && attempts < 50) {
-                x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                int[] zone = Config.CHICKEN_SPAWN_ZONES[i % Config.CHICKEN_SPAWN_ZONES.length];
+                int zoneX = zone[0];
+                int zoneY = zone[1];
+                int zoneSize = zone[2];
+                
+                x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
+                y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
                 
                 Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
                 boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
@@ -430,8 +435,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         int attempts = 0;
                         
                         while (!validPosition && attempts < 50) {
-                            x = Config.CHICKEN_ZONE_X + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
-                            y = Config.CHICKEN_ZONE_Y + (int)(Math.random() * Config.CHICKEN_ZONE_SIZE) - Config.CHICKEN_ZONE_SIZE/2;
+                            int[] zone = Config.CHICKEN_SPAWN_ZONES[(int)(Math.random() * Config.CHICKEN_SPAWN_ZONES.length)];
+                            int zoneX = zone[0];
+                            int zoneY = zone[1];
+                            int zoneSize = zone[2];
+                            
+                            x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
+                            y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
                             
                             Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
                             boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
