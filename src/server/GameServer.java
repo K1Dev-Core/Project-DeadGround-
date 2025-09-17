@@ -41,7 +41,7 @@ public class GameServer {
             System.out.println("Local IP: " + getLocalIPAddress());
             System.out.println("Waiting for connections...");
             System.out.println("================================");
-            
+
             debugUI.logMessage("Server started on port " + port);
             debugUI.logMessage("Local IP: " + getLocalIPAddress());
             gameLoop = new Thread(this::runGameLoop, "GameLoop");
@@ -50,8 +50,8 @@ public class GameServer {
 
             while (running) {
                 try {
-                    Socket clientSocket = serverSocket.accept();
-                    ClientHandler handler = new ClientHandler(clientSocket, this);
+                Socket clientSocket = serverSocket.accept();
+                ClientHandler handler = new ClientHandler(clientSocket, this);
                     executor.submit(handler);
                     debugUI.logMessage("New client connected: " + clientSocket.getInetAddress());
                 } catch (SocketTimeoutException e) {
@@ -147,7 +147,7 @@ public class GameServer {
             }
         }
     }
-    
+
     private void spawnInitialChickens() {
         for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
             int[] zone = Config.CHICKEN_SPAWN_ZONES[i % Config.CHICKEN_SPAWN_ZONES.length];
@@ -262,6 +262,11 @@ public class GameServer {
     }
 
     public void handlePlayerHit(String playerId, int damage) {
+        if (debugUI.isPlayerInGodMode(playerId)) {
+            debugUI.logMessage("Player " + playerId + " is in god mode - no damage taken");
+            return;
+        }
+        
         PlayerData player = players.get(playerId);
         if (player != null && player.hp > 0) {
             player.hp -= damage;

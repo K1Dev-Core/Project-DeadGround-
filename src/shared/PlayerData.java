@@ -14,6 +14,7 @@ public class PlayerData implements Serializable {
     public int kills;
     public boolean shooting;
     public boolean reloading;
+    public boolean hasWeapon = false;
     public long lastUpdate;
     public long deathTime = 0;
     public boolean isDead = false;
@@ -25,7 +26,7 @@ public class PlayerData implements Serializable {
         this.y = 0;
         this.angle = 0;
         this.hp = 100;
-        this.ammo = 30;
+        this.ammo = 0;
         this.kills = 0;
         this.shooting = false;
         this.reloading = false;
@@ -39,7 +40,7 @@ public class PlayerData implements Serializable {
         this.y = y;
         this.angle = 0;
         this.hp = 100;
-        this.ammo = 30;
+        this.ammo = 0;
         this.kills = 0;
         this.shooting = false;
         this.reloading = false;

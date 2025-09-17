@@ -24,9 +24,12 @@ public class ClientPlayer {
     boolean justShot = false;
     boolean deathSoundPlayed = false;
 
-    int ammo = Config.MAX_AMMO;
+    int ammo = 0;
     int reloadCooldown = 0;
     boolean reloading = false;
+    boolean hasWeapon = false;
+    int meleeCooldown = 0;
+    BufferedImage meleeImage;
     
     long deathTime = 0;
     boolean isDead = false;
@@ -57,6 +60,7 @@ public class ClientPlayer {
         stand = ImageIO.read(new File("assets/player/hitman1_stand.png"));
         shoot = ImageIO.read(new File("assets/player/hitman1_gun.png"));
         reload = ImageIO.read(new File("assets/player/hitman1_reload.png"));
+        meleeImage = ImageIO.read(new File("assets/player/hitman1_hold.png"));
 
         try {
             AudioInputStream ais1 = AudioSystem.getAudioInputStream(new File("assets/sfx/footsteps.wav"));
@@ -115,7 +119,8 @@ public class ClientPlayer {
             
             if (isDead && System.currentTimeMillis() - deathTime >= Config.RESPAWN_TIME * 1000) {
                 hp = Config.PLAYER_HP;
-                ammo = Config.MAX_AMMO;
+                ammo = 0;
+                hasWeapon = false;
                 isDead = false;
                 deathTime = 0;
                 deathSoundPlayed = false;
@@ -184,23 +189,23 @@ public class ClientPlayer {
                     reloadClip.stop();
                 }
             }
-        } else if (shooting && shootCooldown == 0 && ammo > 0 && !isDead && !justShot) {
+        } else if (shooting && shootCooldown == 0 && hasWeapon && ammo > 0 && !isDead && !justShot) {
             spawnBulletFromMuzzle(bullets);
             ammo--;
-            if (shootClip != null) {
-                if (shootClip.isRunning())
-                    shootClip.stop();
-                shootClip.setFramePosition(0);
-                shootClip.start();
-            }
+            playShootSound();
             shootCooldown = Config.PLAYER_SHOOT_DELAY;
             justShot = true;
-        } else if (shooting && ammo == 0 && !reloading) {
+        } else if (shooting && meleeCooldown == 0 && !hasWeapon && !isDead) {
+            performMeleeAttack(otherPlayers);
+            meleeCooldown = Config.MELEE_COOLDOWN;
+        } else if (shooting && hasWeapon && ammo == 0 && !reloading) {
             reloading = true;
             reloadCooldown = Config.RELOAD_TIME;
         }
         if (shootCooldown > 0)
             shootCooldown--;
+        if (meleeCooldown > 0)
+            meleeCooldown--;
         
         if (justShot && shootCooldown > 0) {
             justShot = false;
@@ -260,7 +265,8 @@ public class ClientPlayer {
         this.x = (int) safePos.x;
         this.y = (int) safePos.y;
         this.hp = Config.PLAYER_HP;
-        this.ammo = Config.MAX_AMMO;
+        this.ammo = 0;
+        this.hasWeapon = false;
         this.isDead = false;
         this.deathTime = 0;
         this.deathSoundPlayed = false;
@@ -286,6 +292,15 @@ public class ClientPlayer {
             deathSoundPlayed = true;
         }
     }
+    
+    public void playShootSound() {
+        if (shootClip != null) {
+            if (shootClip.isRunning())
+                shootClip.stop();
+            shootClip.setFramePosition(0);
+            shootClip.start();
+        }
+    }
 
     private boolean collidesWithPlayers(Rectangle2D.Double rect, Map<String, ClientPlayer> otherPlayers) {
         for (ClientPlayer player : otherPlayers.values()) {
@@ -305,10 +320,12 @@ public class ClientPlayer {
         }
 
         BufferedImage img;
-        if (reloading) {
+        if (reloading && hasWeapon) {
             img = reload;
-        } else if (shooting) {
+        } else if (shooting && hasWeapon) {
             img = shoot;
+        } else if (shooting && !hasWeapon) {
+            img = meleeImage;
         } else {
             img = stand;
         }
@@ -338,7 +355,28 @@ public class ClientPlayer {
     public PlayerData toPlayerData() {
         PlayerData data = new PlayerData(playerId, playerName, x, y);
         data.update(x, y, angle, hp, ammo, kills, shooting, reloading);
+        data.hasWeapon = hasWeapon;
         return data;
+    }
+    
+    public void performMeleeAttack(Map<String, ClientPlayer> otherPlayers) {
+        double attackX = x + Math.cos(angle) * Config.MELEE_RANGE;
+        double attackY = y + Math.sin(angle) * Config.MELEE_RANGE;
+        Rectangle2D.Double attackRect = new Rectangle2D.Double(attackX - 20, attackY - 20, 40, 40);
+        
+        for (ClientPlayer player : otherPlayers.values()) {
+            if (player != null && player.hp > 0 && attackRect.intersects(player.bounds())) {
+                player.hp -= Config.MELEE_DAMAGE;
+                if (player.hp < 0) player.hp = 0;
+            }
+        }
+    }
+    
+    public void pickupWeapon() {
+        if (!hasWeapon) {
+            hasWeapon = true;
+            ammo = Config.MAX_AMMO;
+        }
     }
     
     public Rectangle2D.Double bounds() {

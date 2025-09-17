@@ -25,6 +25,7 @@ public class ServerDebugUI extends JFrame {
     private int hitCount = 0;
     private int bulletCount = 0;
     private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+    private Map<String, Boolean> godModePlayers = new ConcurrentHashMap<>();
 
     public ServerDebugUI(GameServer server) {
         this.server = server;
@@ -57,7 +58,7 @@ public class ServerDebugUI extends JFrame {
      
         JPanel playerPanel = new JPanel(new BorderLayout());
         playerPanel.setBorder(BorderFactory.createTitledBorder("Connected Players"));
-        String[] playerColumns = {"Player ID", "Name", "X", "Y", "HP", "Ammo", "Status"};
+        String[] playerColumns = {"Player ID", "Name", "X", "Y", "HP", "Ammo", "Status", "God Mode"};
         playerTableModel = new DefaultTableModel(playerColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -66,8 +67,16 @@ public class ServerDebugUI extends JFrame {
         };
         playerTable = new JTable(playerTableModel);
         playerTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        playerTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                if (evt.getClickCount() == 2) {
+                    toggleGodMode();
+                }
+            }
+        });
         JScrollPane playerScrollPane = new JScrollPane(playerTable);
         playerPanel.add(playerScrollPane, BorderLayout.CENTER);
+        
         centerPanel.add(playerPanel);
 
     
@@ -134,6 +143,7 @@ public class ServerDebugUI extends JFrame {
             for (Map.Entry<String, PlayerData> entry : server.players.entrySet()) {
                 PlayerData player = entry.getValue();
                 String status = player.hp <= 0 ? "DEAD" : "ALIVE";
+                boolean godMode = godModePlayers.getOrDefault(player.id, false);
                 playerTableModel.addRow(new Object[]{
                     player.id,
                     player.name,
@@ -141,7 +151,8 @@ public class ServerDebugUI extends JFrame {
                     String.format("%.1f", player.y),
                     player.hp,
                     player.ammo,
-                    status
+                    status,
+                    godMode ? "ON" : "OFF"
                 });
             }
         });
@@ -239,5 +250,23 @@ public class ServerDebugUI extends JFrame {
             statusLabel.setText("Server Status: " + status);
             statusLabel.setForeground(color);
         });
+    }
+    
+    private void toggleGodMode() {
+        int selectedRow = playerTable.getSelectedRow();
+        if (selectedRow >= 0) {
+            String playerId = (String) playerTableModel.getValueAt(selectedRow, 0);
+            String playerName = (String) playerTableModel.getValueAt(selectedRow, 1);
+            
+            boolean currentGodMode = godModePlayers.getOrDefault(playerId, false);
+            godModePlayers.put(playerId, !currentGodMode);
+            
+            logMessage("Player " + playerName + " god mode: " + (!currentGodMode ? "ON" : "OFF"));
+            updatePlayerTable();
+        }
+    }
+    
+    public boolean isPlayerInGodMode(String playerId) {
+        return godModePlayers.getOrDefault(playerId, false);
     }
 }

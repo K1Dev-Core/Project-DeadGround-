@@ -24,6 +24,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public java.util.List<CorpseEffect> corpses = new ArrayList<>();
     private java.util.List<Chicken> chickens = new ArrayList<>();
     private java.util.List<Long> chickenRespawnTimes = new ArrayList<>();
+    private java.util.List<Weapon> weapons = new ArrayList<>();
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -180,6 +181,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
         }
 
+        for (int i = 0; i < Config.WEAPON_SPAWN_POINTS.length; i++) {
+            int[] point = Config.WEAPON_SPAWN_POINTS[i];
+            weapons.add(new Weapon(i, point[0], point[1]));
+        }
+
         loop = new Thread(this, "game-loop");
         loop.start();
     }
@@ -231,7 +237,15 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-        
+
+        synchronized (weapons) {
+            ArrayList<Weapon> weaponsCopy = new ArrayList<>(weapons);
+            for (Weapon weapon : weaponsCopy) {
+                if (weapon != null) {
+                    weapon.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
 
         synchronized (otherPlayers) {
             ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
@@ -241,7 +255,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-
+        
         localPlayer.draw(g2, camera.camX, camera.camY, mousePoint, camera);
         
         if (localPlayer.hp <= 0) {
@@ -279,15 +293,17 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 14));
-        String ammoText;
-        if (localPlayer.reloading) {
-            ammoText = "RELOADING...";
-        } else {
-            ammoText = localPlayer.ammo + "/" + Config.MAX_AMMO;
+        if (localPlayer.hasWeapon) {
+            String ammoText;
+            if (localPlayer.reloading) {
+                ammoText = "RELOADING...";
+            } else {
+                ammoText = localPlayer.ammo + "/" + Config.MAX_AMMO;
+            }
+            FontMetrics fm = g2.getFontMetrics();
+            int textWidth = fm.stringWidth(ammoText);
+            g2.drawString(ammoText, mousePoint.x - textWidth/2, mousePoint.y - 25);
         }
-        FontMetrics fm = g2.getFontMetrics();
-        int textWidth = fm.stringWidth(ammoText);
-        g2.drawString(ammoText, mousePoint.x - textWidth/2, mousePoint.y - 25);
 
         g2.dispose();
     }
@@ -405,6 +421,22 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 
                 for (Bullet blt : bulletsToRemove) {
                     bullets.remove(blt);
+                }
+            }
+
+            synchronized (weapons) {
+                ArrayList<Weapon> weaponsCopy = new ArrayList<>(weapons);
+                for (Weapon weapon : weaponsCopy) {
+                    if (weapon != null && !weapon.collected) {
+                        weapon.update();
+                        
+                        double distance = Math.sqrt(Math.pow(localPlayer.x - weapon.x, 2) + Math.pow(localPlayer.y - weapon.y, 2));
+                        if (distance <= Config.WEAPON_PICKUP_RANGE) {
+                            localPlayer.pickupWeapon();
+                            weapon.collected = true;
+                            NotificationSystem.addNotification("Weapon picked up!", Color.YELLOW);
+                        }
+                    }
                 }
             }
 
@@ -702,6 +734,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.kills = playerData.kills;
                 player.shooting = playerData.shooting;
                 player.reloading = playerData.reloading;
+                player.hasWeapon = playerData.hasWeapon;
+                
+                if (playerData.shooting && playerData.hasWeapon) {
+                    player.playShootSound();
+                }
                 
                 if (playerData.isDead) {
                     if (!player.isDead) {

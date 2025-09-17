@@ -38,6 +38,19 @@ public class Config {
     
         {1500, 600, 180},
         {800, 1800, 160},
-        {1323, 1700, 120}
+        {2524, 2023, 120}
+    };
+    
+    public static int WEAPON_PICKUP_RANGE = 50;
+    public static int MELEE_DAMAGE = 5;
+    public static int MELEE_RANGE = 40;
+    public static int MELEE_COOLDOWN = 30;
+    
+    public static int[][] WEAPON_SPAWN_POINTS = {
+        {1175, 2028},
+        {1451, 1184},
+        {691, 602},
+        {2649, 818},
+        {1071, 2650}
     };
 }
