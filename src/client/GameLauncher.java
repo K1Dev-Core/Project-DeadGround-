@@ -35,7 +35,7 @@ public class GameLauncher extends JFrame {
             Clip buttonClip = AudioSystem.getClip();
             buttonClip.open(audioInputStream);
             FloatControl gainControl = (FloatControl) buttonClip.getControl(FloatControl.Type.MASTER_GAIN);
-            gainControl.setValue(-10.0f);
+       
             buttonClip.start();
         } catch (Exception e) {
             e.printStackTrace();
@@ -310,15 +310,20 @@ public class GameLauncher extends JFrame {
     }
     
     private void setupEventListeners() {
-        connectButton.addActionListener(e -> connectToServer());
+        connectButton.addActionListener(e -> {
+            playButtonSound();
+            connectToServer();
+        });
         
        
         prevCharacterButton.addActionListener(e -> {
+            playButtonSound();
             selectedCharacterIndex = (selectedCharacterIndex - 1 + characterTypes.length) % characterTypes.length;
             updateCharacterPreview();
         });
         
         nextCharacterButton.addActionListener(e -> {
+            playButtonSound();
             selectedCharacterIndex = (selectedCharacterIndex + 1) % characterTypes.length;
             updateCharacterPreview();
         });
@@ -327,6 +332,7 @@ public class GameLauncher extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    playButtonSound();
                     connectToServer();
                 }
             }
@@ -336,6 +342,7 @@ public class GameLauncher extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    playButtonSound();
                     connectToServer();
                 }
             }
@@ -345,6 +352,7 @@ public class GameLauncher extends JFrame {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    playButtonSound();
                     connectToServer();
                 }
             }
