@@ -6,7 +6,9 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import shared.*;
@@ -97,7 +99,8 @@ public class ClientPlayer {
             List<Bullet> bullets,
             List<Rectangle2D.Double> collisions,
             int mapW, int mapH,
-            Camera camera) {
+            Camera camera,
+            Map<String, ClientPlayer> otherPlayers) {
 
         if (hp <= 0) {
             if (!isDead) {
@@ -147,13 +150,13 @@ public class ClientPlayer {
 
         if (dx != 0) {
             Rectangle2D.Double nextX = new Rectangle2D.Double(x + dx, y, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextX, collisions))
+            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers))
                 x += dx;
         }
         
         if (dy != 0) {
             Rectangle2D.Double nextY = new Rectangle2D.Double(x, y + dy, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextY, collisions))
+            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers))
                 y += dy;
         }
 
@@ -244,14 +247,22 @@ public class ClientPlayer {
         this.movingRight = moving;
     }
     
-    public void respawn(int mapWidth, int mapHeight, java.util.List<Rectangle2D.Double> collisions) {
-        Point2D.Double safePos = Utils.findSafeSpawnPosition(mapWidth, mapHeight, collisions);
+    public void respawn(int mapWidth, int mapHeight, java.util.List<Rectangle2D.Double> collisions, Map<String, ClientPlayer> otherPlayers) {
+        List<Point2D.Double> existingPositions = new ArrayList<>();
+        for (ClientPlayer existingPlayer : otherPlayers.values()) {
+            if (existingPlayer != null && existingPlayer.hp > 0) {
+                existingPositions.add(new Point2D.Double(existingPlayer.x, existingPlayer.y));
+            }
+        }
+        
+        Point2D.Double safePos = Utils.findSafeSpawnPosition(mapWidth, mapHeight, collisions, existingPositions);
         this.x = (int) safePos.x;
         this.y = (int) safePos.y;
         this.hp = Config.PLAYER_HP;
         this.ammo = Config.MAX_AMMO;
         this.isDead = false;
         this.deathTime = 0;
+        this.deathSoundPlayed = false;
     }
 
     public void playDamageSound() {
@@ -265,13 +276,23 @@ public class ClientPlayer {
     }
 
     public void playDeathSound() {
-        if (deathClip != null) {
+        if (deathClip != null && !deathSoundPlayed) {
             if (deathClip.isRunning()) {
                 deathClip.stop();
             }
             deathClip.setFramePosition(0);
             deathClip.start();
+            deathSoundPlayed = true;
         }
+    }
+
+    private boolean collidesWithPlayers(Rectangle2D.Double rect, Map<String, ClientPlayer> otherPlayers) {
+        for (ClientPlayer player : otherPlayers.values()) {
+            if (player != null && player.hp > 0 && rect.intersects(player.bounds())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void draw(Graphics2D g2, int camX, int camY, Point mouse, Camera camera) {

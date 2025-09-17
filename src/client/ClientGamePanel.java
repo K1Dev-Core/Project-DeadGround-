@@ -2,10 +2,12 @@ package client;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.*;
+import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import shared.*;
@@ -46,7 +48,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
             customCursor = null;
         }
 
-        localPlayer = new ClientPlayer(200, 200, null, playerId, playerName);
+        Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
+        localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -147,6 +150,24 @@ public class ClientGamePanel extends JPanel implements Runnable {
         for (MapLoader.Layer layer : mapLoader.layers)
             drawLayer(g2, layer, startCol, startRow, endCol, endRow);
 
+        synchronized (effects) {
+            ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
+            for (HitEffect e : effectsCopy) {
+                if (e != null) {
+                    e.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+
+        synchronized (corpses) {
+            ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
+            for (CorpseEffect corpse : corpsesCopy) {
+                if (corpse != null) {
+                    corpse.draw(g2, camera.camX, camera.camY);
+                }
+            }
+        }
+
         synchronized (otherPlayers) {
             ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
             for (ClientPlayer player : playersCopy) {
@@ -160,24 +181,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
         
         if (localPlayer.hp <= 0) {
             drawDeathScreen(g2);
-        }
-        
-        synchronized (corpses) {
-            ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
-            for (CorpseEffect corpse : corpsesCopy) {
-                if (corpse != null) {
-                    corpse.draw(g2, camera.camX, camera.camY);
-                }
-            }
-        }
-
-        synchronized (effects) {
-            ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
-            for (HitEffect e : effectsCopy) {
-                if (e != null) {
-                    e.draw(g2, camera.camX, camera.camY);
-                }
-            }
         }
 
         synchronized (bullets) {
@@ -242,13 +245,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
             lastTime = currentTime;
 
             if (localPlayer.isDead && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
-                localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
+                localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, otherPlayers);
                 NotificationSystem.addNotification("You respawned!", Color.GREEN);
             }
             
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
-                    camera);
+                    camera, otherPlayers);
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
@@ -431,7 +434,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public void addPlayer(PlayerData playerData) {
         try {
             synchronized (otherPlayers) {
-                ClientPlayer player = new ClientPlayer((int) playerData.x, (int) playerData.y, null,
+                List<Point2D.Double> existingPositions = new ArrayList<>();
+                existingPositions.add(new Point2D.Double(localPlayer.x, localPlayer.y));
+                for (ClientPlayer existingPlayer : otherPlayers.values()) {
+                    existingPositions.add(new Point2D.Double(existingPlayer.x, existingPlayer.y));
+                }
+                
+                Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, existingPositions);
+                ClientPlayer player = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null,
                         playerData.id, playerData.name);
                 otherPlayers.put(playerData.id, player);
                 NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
@@ -471,6 +481,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         NotificationSystem.addNotification(player.playerName + " died!", Color.RED);
                         player.playDeathSound();
                         player.isDead = true;
+                        player.deathSoundPlayed = true;
                     } else if (oldHp > player.hp && player.hp > 0) {
                         player.playDamageSound();
                     }
@@ -485,8 +496,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.reloading = playerData.reloading;
                 
                 if (playerData.isDead) {
-                    player.isDead = true;
-                    player.deathTime = playerData.deathTime;
+                    if (!player.isDead) {
+                        player.isDead = true;
+                        player.deathTime = playerData.deathTime;
+                    }
                 } else {
                     if (player.isDead) {
                         synchronized (corpses) {
