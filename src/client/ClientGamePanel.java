@@ -134,6 +134,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         showHUD = !showHUD;
                         showHUDHint = false;
                         break;
+                    case KeyEvent.VK_SHIFT:
+                        if (localPlayer.dashCooldown == 0 && !localPlayer.isDashing) {
+                            localPlayer.startDash();
+                        }
+                        break;
                 }
             }
             
@@ -321,6 +326,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
             int textWidth = fm.stringWidth(ammoText);
             g2.drawString(ammoText, mousePoint.x - textWidth/2, mousePoint.y - 25);
         }
+        
+        drawDashCooldownBar(g2);
 
         g2.dispose();
     }
@@ -581,10 +588,32 @@ public class ClientGamePanel extends JPanel implements Runnable {
         g2.setFont(new Font("Arial", Font.BOLD, 12));
         g2.drawString(ammo + "/" + maxAmmo, drawX, drawY);
     }
+    
+    private void drawDashCooldownBar(Graphics2D g2) {
+        if (localPlayer.dashCooldown > 0) {
+            int screenWidth = getWidth();
+            int screenHeight = getHeight();
+            int barWidth = 120;
+            int barHeight = 8;
+            int x = (screenWidth - barWidth) / 2;
+            int y = screenHeight - 30;
+            
+            g2.setColor(new Color(0, 0, 0, 100));
+            g2.fillRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
+            
+            g2.setColor(Color.GRAY);
+            g2.fillRect(x, y, barWidth, barHeight);
+            
+            double progress = 1.0 - (double) localPlayer.dashCooldown / Config.DASH_COOLDOWN;
+            int fillWidth = (int) (barWidth * progress);
+            
+            g2.setColor(new Color(237, 207, 9, 205));
+            g2.fillRect(x, y, fillWidth, barHeight);
+        }
+    }
 
     private void drawHUD(Graphics2D g2) {
-        int screenWidth = getWidth();
-        int screenHeight = getHeight();
+
 
         g2.setColor(new Color(0, 0, 0, 180));
         g2.fillRect(0, 0, 250, 200);

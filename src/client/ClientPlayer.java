@@ -32,6 +32,11 @@ public class ClientPlayer {
     int meleeCooldown = 0;
     BufferedImage meleeImage;
     
+    boolean isDashing = false;
+    int dashCooldown = 0;
+    int dashDistance = 0;
+    double dashAngle = 0;
+    
     long deathTime = 0;
     boolean isDead = false;
     boolean movingUp = false;
@@ -45,6 +50,7 @@ public class ClientPlayer {
     Clip reloadClip;
     Clip damageClip;
     Clip deathClip;
+    Clip teleportClip;
 
         int frameCounter = 0;
 
@@ -99,6 +105,10 @@ public class ClientPlayer {
             AudioInputStream ais5 = AudioSystem.getAudioInputStream(new File("assets/sfx/death.wav"));
             deathClip = AudioSystem.getClip();
             deathClip.open(ais5);
+            
+            AudioInputStream ais6 = AudioSystem.getAudioInputStream(new File("assets/sfx/teleport.wav"));
+            teleportClip = AudioSystem.getClip();
+            teleportClip.open(ais6);
         } catch (Exception ignore) {
         }
     }
@@ -140,21 +150,33 @@ public class ClientPlayer {
         int dx = 0, dy = 0;
         isMoving = false;
         
-        if (movingUp) {
-            dy -= Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingDown) {
-            dy += Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingLeft) {
-            dx -= Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingRight) {
-            dx += Config.PLAYER_SPEED;
-            isMoving = true;
+        if (isDashing) {
+            double dashDx = Math.cos(dashAngle) * Config.DASH_SPEED;
+            double dashDy = Math.sin(dashAngle) * Config.DASH_SPEED;
+            dx = (int) dashDx;
+            dy = (int) dashDy;
+            dashDistance += Config.DASH_SPEED;
+            if (dashDistance >= Config.DASH_DISTANCE) {
+                isDashing = false;
+                dashDistance = 0;
+            }
+        } else {
+            if (movingUp) {
+                dy -= Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingDown) {
+                dy += Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingLeft) {
+                dx -= Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingRight) {
+                dx += Config.PLAYER_SPEED;
+                isMoving = true;
+            }
         }
 
         if (dx != 0) {
@@ -192,13 +214,13 @@ public class ClientPlayer {
                     reloadClip.stop();
                 }
             }
-        } else if (shooting && shootCooldown == 0 && hasWeapon && ammo > 0 && !isDead && !justShot) {
+        } else if (shooting && shootCooldown == 0 && hasWeapon && ammo > 0 && !isDead && !justShot && !isDashing) {
             spawnBulletFromMuzzle(bullets);
             ammo--;
             playShootSound();
             shootCooldown = Config.PLAYER_SHOOT_DELAY;
             justShot = true;
-        } else if (shooting && meleeCooldown == 0 && !hasWeapon && !isDead) {
+        } else if (shooting && meleeCooldown == 0 && !hasWeapon && !isDead && !isDashing) {
             performMeleeAttack(otherPlayers);
             meleeCooldown = Config.MELEE_COOLDOWN;
         } else if (shooting && hasWeapon && ammo == 0 && !reloading) {
@@ -209,14 +231,32 @@ public class ClientPlayer {
             shootCooldown--;
         if (meleeCooldown > 0)
             meleeCooldown--;
+        if (dashCooldown > 0)
+            dashCooldown--;
         
-        if (justShot && shootCooldown > 0) {
+        if (justShot && shootCooldown == 0) {
             justShot = false;
         }
-
-        frameCounter++;
-        if (frameCounter >= 15) {
-            frameCounter = 0;
+    }
+    
+    public void startDash() {
+        if (dashCooldown == 0 && !isDashing) {
+            isDashing = true;
+            dashAngle = angle;
+            dashDistance = 0;
+            dashCooldown = Config.DASH_COOLDOWN;
+            playTeleportSound();
+        }
+    }
+    
+    public void playTeleportSound() {
+        try {
+            if (teleportClip != null) {
+                teleportClip.setFramePosition(0);
+                teleportClip.start();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -335,7 +375,10 @@ public class ClientPlayer {
 
         AffineTransform at = new AffineTransform();
         
-        if (isMoving) {
+        if (isDashing) {
+            double dashBounce = Math.sin(System.currentTimeMillis() * 0.02) * 4;
+            at.translate(drawX, drawY + dashBounce);
+        } else if (isMoving) {
             double bounce = Math.sin(System.currentTimeMillis() * 0.01) * 2;
             at.translate(drawX, drawY + bounce);
         } else {

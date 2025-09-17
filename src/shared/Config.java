@@ -2,12 +2,12 @@ package shared;
 
 public class Config {
     public static final int FPS = 60;
-    public static final int VSYNC_ENABLED = 1;
-    public static final int FRAME_SKIP_THRESHOLD = 2;
-    public static final int TARGET_FPS = 60;
-    public static final int MAX_FRAME_TIME = 20;
+
 
     public static final int PLAYER_SPEED = 2;
+    public static final int DASH_SPEED = 15;
+    public static final int DASH_DISTANCE = 300;
+    public static final int DASH_COOLDOWN = 500;
     public static final int PLAYER_HP = 100;
     public static final int PLAYER_SHOOT_DELAY = 60;
     public static final int MAX_AMMO = 20;
@@ -23,7 +23,6 @@ public class Config {
     public static final int HIT_FX_LIFE = 12;
     
 
-    public static boolean SMOOTH_MOVEMENT = true;
     public static int RENDER_DISTANCE = 2;
     public static boolean USE_ACCELERATED_GRAPHICS = true;
     public static boolean ENABLE_OPENGL = false;
