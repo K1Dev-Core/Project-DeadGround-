@@ -54,14 +54,26 @@ public class NetworkClient {
     private void receiveMessages() {
         while (connected) {
             try {
-                NetworkMessage message = (NetworkMessage) in.readObject();
-                processMessage(message);
-            } catch (IOException | ClassNotFoundException e) {
+                Object received = in.readObject();
+                if (received instanceof NetworkMessage) {
+                    NetworkMessage message = (NetworkMessage) received;
+                    processMessage(message);
+                } else {
+                    System.err.println("Received non-NetworkMessage object: " + received.getClass());
+                }
+            } catch (IOException e) {
                 if (connected) {
-                    System.err.println("Error receiving data: " + e.getMessage());
+                    System.err.println("Connection lost: " + e.getMessage());
                     connected = false;
                 }
                 break;
+            } catch (ClassNotFoundException e) {
+                System.err.println("Invalid data received: " + e.getMessage());
+                // Continue receiving other messages
+            } catch (Exception e) {
+                System.err.println("Unexpected error: " + e.getMessage());
+                e.printStackTrace();
+                // Continue receiving other messages
             }
         }
     }
@@ -93,13 +105,21 @@ public class NetworkClient {
                 break;
 
             case NetworkMessage.BOT_SPAWN:
-                BotData botData = (BotData) message.data;
-                gamePanel.addBot(botData);
+                if (message.data instanceof BotData) {
+                    BotData botData = (BotData) message.data;
+                    gamePanel.addBot(botData);
+                } else {
+                    System.err.println("Invalid BOT_SPAWN data type: " + message.data.getClass());
+                }
                 break;
 
             case NetworkMessage.BOT_UPDATE:
-                BotData updateBotData = (BotData) message.data;
-                gamePanel.updateBot(updateBotData);
+                if (message.data instanceof BotData) {
+                    BotData updateBotData = (BotData) message.data;
+                    gamePanel.updateBot(updateBotData);
+                } else {
+                    System.err.println("Invalid BOT_UPDATE data type: " + message.data.getClass());
+                }
                 break;
 
             case NetworkMessage.BOT_HIT:
@@ -130,6 +150,8 @@ public class NetworkClient {
     private void sendMessage(NetworkMessage message) {
         if (connected && out != null) {
             try {
+                // Reset the stream to avoid serialization issues
+                out.reset();
                 out.writeObject(message);
                 out.flush();
             } catch (IOException e) {

@@ -79,6 +79,22 @@ public class GameServer {
     public void addPlayer(PlayerData playerData) {
         players.put(playerData.id, playerData);
         broadcastToOthers(playerData.id, new NetworkMessage(NetworkMessage.PLAYER_JOIN, playerData.id, playerData));
+
+        // Send existing players to new player
+        ClientHandler newClient = clients.get(playerData.id);
+        if (newClient != null) {
+            for (PlayerData existingPlayer : players.values()) {
+                if (!existingPlayer.id.equals(playerData.id)) {
+                    newClient.sendMessage(
+                            new NetworkMessage(NetworkMessage.PLAYER_JOIN, existingPlayer.id, existingPlayer));
+                }
+            }
+
+            // Send existing bots to new player
+            for (BotData bot : bots.values()) {
+                newClient.sendMessage(new NetworkMessage(NetworkMessage.BOT_SPAWN, "server", bot));
+            }
+        }
     }
 
     public void updatePlayer(PlayerData playerData) {
@@ -157,8 +173,17 @@ public class GameServer {
                 bot.x += dx;
                 bot.y += dy;
 
-                // Broadcast bot update
-                broadcastToAll(new NetworkMessage(NetworkMessage.BOT_UPDATE, "server", bot));
+                // Update bot data
+                bot.update(bot.x, bot.y, bot.angle, bot.hp);
+
+                // Only send bot updates to clients that are not the server
+                try {
+                    for (ClientHandler handler : clients.values()) {
+                        handler.sendMessage(new NetworkMessage(NetworkMessage.BOT_UPDATE, "server", bot));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error sending bot update: " + e.getMessage());
+                }
             }
         }
     }

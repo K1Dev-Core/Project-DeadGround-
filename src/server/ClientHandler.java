@@ -37,37 +37,61 @@ public class ClientHandler implements Runnable {
     }
 
     private void processMessage(NetworkMessage message) {
-        switch (message.type) {
-            case NetworkMessage.PLAYER_JOIN:
-                PlayerData playerData = (PlayerData) message.data;
-                this.playerId = playerData.id;
-                server.addClient(playerId, this);
-                server.addPlayer(playerData);
-                System.out.println("Player joined: " + playerData.name + " (ID: " + playerId + ")");
-                break;
+        try {
+            switch (message.type) {
+                case NetworkMessage.PLAYER_JOIN:
+                    if (message.data instanceof PlayerData) {
+                        PlayerData playerData = (PlayerData) message.data;
+                        this.playerId = playerData.id;
+                        server.addClient(playerId, this);
+                        server.addPlayer(playerData);
+                        System.out.println("Player joined: " + playerData.name + " (ID: " + playerId + ")");
+                    } else {
+                        System.err.println("Invalid PLAYER_JOIN data type: " + message.data.getClass());
+                    }
+                    break;
 
-            case NetworkMessage.PLAYER_UPDATE:
-                PlayerData updateData = (PlayerData) message.data;
-                server.updatePlayer(updateData);
-                break;
+                case NetworkMessage.PLAYER_UPDATE:
+                    if (message.data instanceof PlayerData) {
+                        PlayerData updateData = (PlayerData) message.data;
+                        server.updatePlayer(updateData);
+                    } else {
+                        System.err.println("Invalid PLAYER_UPDATE data type: " + message.data.getClass());
+                    }
+                    break;
 
-            case NetworkMessage.BULLET_SPAWN:
-                BulletData bulletData = (BulletData) message.data;
-                server.broadcastToAll(new NetworkMessage(NetworkMessage.BULLET_SPAWN, bulletData.id, bulletData));
-                break;
+                case NetworkMessage.BULLET_SPAWN:
+                    if (message.data instanceof BulletData) {
+                        BulletData bulletData = (BulletData) message.data;
+                        server.broadcastToAll(
+                                new NetworkMessage(NetworkMessage.BULLET_SPAWN, bulletData.id, bulletData));
+                    } else {
+                        System.err.println("Invalid BULLET_SPAWN data type: " + message.data.getClass());
+                    }
+                    break;
 
-            case NetworkMessage.BOT_HIT:
-                String[] hitData = (String[]) message.data;
-                String botId = hitData[0];
-                int damage = Integer.parseInt(hitData[1]);
-                server.handleBulletHit(botId, damage);
-                break;
+                case NetworkMessage.BOT_HIT:
+                    if (message.data instanceof String[]) {
+                        String[] hitData = (String[]) message.data;
+                        String botId = hitData[0];
+                        int damage = Integer.parseInt(hitData[1]);
+                        server.handleBulletHit(botId, damage);
+                    } else {
+                        System.err.println("Invalid BOT_HIT data type: " + message.data.getClass());
+                    }
+                    break;
+            }
+        } catch (Exception e) {
+            System.err.println("Error processing message: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public void sendMessage(NetworkMessage message) {
         if (connected && out != null) {
             try {
+                // Reset the stream to avoid serialization issues
+                out.reset();
                 out.writeObject(message);
                 out.flush();
             } catch (IOException e) {
