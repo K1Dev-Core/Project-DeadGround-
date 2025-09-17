@@ -41,15 +41,21 @@ public class ClientGamePanel extends JPanel implements Runnable {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
         setFocusable(true);
-       
-      
+        setDoubleBuffered(true);
+        
+        if (Config.USE_ACCELERATED_GRAPHICS) {
+            System.setProperty("sun.java2d.opengl", Config.ENABLE_OPENGL ? "true" : "false");
+            System.setProperty("sun.java2d.d3d", "true");
+            System.setProperty("sun.java2d.ddforcevram", "true");
+        }
+        
         requestFocusInWindow();
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
             new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
 
         mapLoader = new MapLoader();
         try {
-            mapLoader.load("assets/map/mappgameeeee.tmx");
+        mapLoader.load("assets/map/mappgameeeee.tmx");
             System.out.println("Map loaded successfully:");
             System.out.println("  Map size: " + mapLoader.mapWidthTiles + "x" + mapLoader.mapHeightTiles + " tiles");
             System.out.println("  Pixel size: " + mapLoader.mapPixelW + "x" + mapLoader.mapPixelH);
@@ -102,7 +108,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         });
-        
+
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -197,11 +203,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         
-        if (Config.SMOOTH_MOVEMENT) {
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        }
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
         int viewW = getWidth();
         int viewH = getHeight();
@@ -272,13 +281,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
             ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
             for (Bullet b : bulletsCopy) {
                 if (b != null) {
-                    b.draw(g2, camera.camX, camera.camY);
+            b.draw(g2, camera.camX, camera.camY);
                 }
             }
         }
 
         if (showHUD) {
-            drawHUD(g2);
+        drawHUD(g2);
         }
         drawDebugInfo(g2);
         
@@ -316,6 +325,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     private void drawLayer(Graphics2D g2, MapLoader.Layer layer,
             int startCol, int startRow, int endCol, int endRow) {
+        int tileW = mapLoader.tileWidth;
+        int tileH = mapLoader.tileHeight;
+        int camX = camera.camX;
+        int camY = camera.camY;
+        
         for (int r = startRow; r <= endRow; r++) {
             for (int c = startCol; c <= endCol; c++) {
                 int idx = r * layer.width + c;
@@ -325,12 +339,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 if (gid == 0)
                     continue;
                 BufferedImage tile = mapLoader.tileset.getTile(gid);
-                if (tile == null) {
-                    System.out.println("DEBUG: Tile is null for gid " + gid + " at (" + c + "," + r + ")");
+                if (tile == null)
                     continue;
-                }
-                int x = c * mapLoader.tileWidth - camera.camX;
-                int y = r * mapLoader.tileHeight - camera.camY;
+                int x = c * tileW - camX;
+                int y = r * tileH - camY;
                 g2.drawImage(tile, x, y, null);
             }
         }
@@ -339,24 +351,35 @@ public class ClientGamePanel extends JPanel implements Runnable {
     @Override
     public void run() {
         long frameTime = 1000L / Config.FPS;
-        long lastTime = System.currentTimeMillis();
+        long lastTime = System.nanoTime();
+        long lastFpsTime = System.currentTimeMillis();
+        int frameCount = 0;
+        
         while (running) {
-            long currentTime = System.currentTimeMillis();
-            long deltaTime = currentTime - lastTime;
+            long currentTime = System.nanoTime();
+            long deltaTime = (currentTime - lastTime) / 1_000_000;
             lastTime = currentTime;
+            
+            if (deltaTime < frameTime) {
+                try {
+                    Thread.sleep((frameTime - deltaTime) / 1_000_000);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
 
             if (localPlayer.isDead && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
                 localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, otherPlayers);
                 NotificationSystem.addNotification("You respawned!", Color.GREEN);
             }
-            
+
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera, otherPlayers);
 
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
-                networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
+            networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
             }
             
          
@@ -373,17 +396,17 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         continue;
                     }
                     
-                    if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
+                if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
                         bulletsToRemove.add(blt);
-                        continue;
-                    }
+                    continue;
+                }
                     
                     if (blt.justSpawned) {
                         networkClient.sendBulletSpawn(blt.toBulletData());
                         blt.justSpawned = false;
                     }
                     
-                    Rectangle2D.Double bRect = blt.bounds();
+                Rectangle2D.Double bRect = blt.bounds();
                     
                     
                     synchronized (otherPlayers) {
@@ -393,7 +416,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                                 Rectangle2D.Double playerRect = player.bounds();
                                 if (playerRect.intersects(bRect)) {
                                     System.out.println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
-                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
+                        effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
                                     bulletsToRemove.add(blt);
                                     
                                     networkClient.sendPlayerHit(player.playerId, Config.BULLET_DAMAGE);
@@ -421,7 +444,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                                             localPlayer.hp = Math.min(Config.PLAYER_HP, localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
                                         }
                                     }
-                                    break;
+                        break;
                                 }
                             }
                         }
@@ -533,13 +556,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             repaint();
             
-            long targetTime = frameTime;
-            long sleep = Math.max(1, targetTime - deltaTime);
-            try {
-                if (sleep > 0) {
-                    Thread.sleep(sleep);
-                }
-            } catch (InterruptedException ignored) {
+            frameCount++;
+            if (System.currentTimeMillis() - lastFpsTime >= 1000) {
+                lastFpsTime = System.currentTimeMillis();
+                frameCount = 0;
             }
         }
     }
@@ -585,7 +605,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
             for (ClientPlayer player : playersCopy2) {
                 if (player != null) {
                     g2.drawString(player.playerName + " - Kills: " + player.kills, 10, y);
-                    y += 20;
+            y += 20;
                 }
             }
         }
@@ -656,8 +676,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, existingPositions);
                 ClientPlayer player = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null,
                         playerData.id, playerData.name, playerData.characterType);
-                otherPlayers.put(playerData.id, player);
-                NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
+            otherPlayers.put(playerData.id, player);
+            NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -666,12 +686,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     public void removePlayer(String playerId) {
         synchronized (otherPlayers) {
-            ClientPlayer player = otherPlayers.remove(playerId);
-            if (player != null) {
+        ClientPlayer player = otherPlayers.remove(playerId);
+        if (player != null) {
                 for (int i = 0; i < 20; i++) {
                     effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
                 }
-                NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+            NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
             }
         }
     }
@@ -715,8 +735,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     public void updatePlayer(PlayerData playerData) {
         synchronized (otherPlayers) {
-            ClientPlayer player = otherPlayers.get(playerData.id);
-            if (player != null) {
+        ClientPlayer player = otherPlayers.get(playerData.id);
+        if (player != null) {
                 int oldHp = player.hp;
                 player.hp = playerData.hp;
                 
@@ -740,11 +760,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 double lerpFactor = Config.PLAYER_LERP_FACTOR;
                 player.x = (int) (player.x + (playerData.x - player.x) * lerpFactor);
                 player.y = (int) (player.y + (playerData.y - player.y) * lerpFactor);
-                player.angle = playerData.angle;
-                player.ammo = playerData.ammo;
+            player.angle = playerData.angle;
+            player.ammo = playerData.ammo;
                 player.kills = playerData.kills;
-                player.shooting = playerData.shooting;
-                player.reloading = playerData.reloading;
+            player.shooting = playerData.shooting;
+            player.reloading = playerData.reloading;
                 player.hasWeapon = playerData.hasWeapon;
                 player.isGodMode = playerData.isGodMode;
                 player.characterType = playerData.characterType;
