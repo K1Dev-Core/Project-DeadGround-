@@ -14,7 +14,6 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import shared.*;
-import shared.MapLoader;
 
 public class ClientGamePanel extends JPanel implements Runnable {
     private MapLoader mapLoader;
@@ -373,7 +372,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 int gid = layer.gids[idx];
                 if (gid == 0)
                     continue;
-                BufferedImage tile = mapLoader.tileset.getTile(gid);
+                BufferedImage tile = mapLoader.getTile(gid);
                 if (tile == null)
                     continue;
                 int x = c * tileW - camX;

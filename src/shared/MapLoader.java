@@ -12,7 +12,7 @@ import org.w3c.dom.*;
 public class MapLoader {
     public int mapWidthTiles, mapHeightTiles, tileWidth, tileHeight;
     public int mapPixelW, mapPixelH;
-    public Tileset tileset;
+    public List<Tileset> tilesets = new ArrayList<>();
     public List<Layer> layers = new ArrayList<>();
     public List<Rectangle2D.Double> collisions = new ArrayList<>();
 
@@ -102,6 +102,22 @@ public class MapLoader {
         }
     }
 
+    public BufferedImage getTile(int gid) {
+        if (gid <= 0)
+            return null;
+        
+     
+        for (Tileset tileset : tilesets) {
+            int cleanGid = gid & 0x0FFFFFFF;
+            if (cleanGid >= tileset.firstGid && cleanGid < tileset.firstGid + tileset.tileCount) {
+                return tileset.getTile(gid);
+            }
+        }
+        
+        System.out.println("DEBUG: No tileset found for GID " + gid);
+        return null;
+    }
+
     public void load(String path) throws Exception {
         Path tmxPath = Paths.get(path);
         Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
@@ -115,28 +131,67 @@ public class MapLoader {
         mapPixelW = mapWidthTiles * tileWidth;
         mapPixelH = mapHeightTiles * tileHeight;
 
-        Element ts = (Element) map.getElementsByTagName("tileset").item(0);
-        Tileset t = new Tileset();
-        t.firstGid = Integer.parseInt(ts.getAttribute("firstgid"));
-        t.tileWidth = Integer.parseInt(ts.getAttribute("tilewidth"));
-        t.tileHeight = Integer.parseInt(ts.getAttribute("tileheight"));
-        t.tileCount = Integer.parseInt(ts.getAttribute("tilecount"));
-        t.columns = Integer.parseInt(ts.getAttribute("columns"));
-        String baseName = new File(((Element) ts.getElementsByTagName("image").item(0))
-                .getAttribute("source")).getName();
-        Path sheetPath = tmxPath.getParent().resolve(baseName);
-        if (!Files.exists(sheetPath))
-            sheetPath = Paths.get("assets").resolve(baseName);
         
-        System.out.println("Looking for tileset image: " + sheetPath);
-        if (Files.exists(sheetPath)) {
-            t.sheet = ImageIO.read(sheetPath.toFile());
-            System.out.println("Tileset loaded: " + t.sheet.getWidth() + "x" + t.sheet.getHeight());
-        } else {
-            System.err.println("Tileset image not found: " + sheetPath);
-            throw new Exception("Tileset image not found: " + sheetPath);
+        NodeList tilesetNodes = map.getElementsByTagName("tileset");
+        for (int i = 0; i < tilesetNodes.getLength(); i++) {
+            Element ts = (Element) tilesetNodes.item(i);
+            
+         
+            if (ts.hasAttribute("source")) {
+                System.out.println("Creating tileset for external reference: " + ts.getAttribute("source"));
+                // สร้าง tileset ใหม่สำหรับ external tileset โดยใช้ข้อมูลจาก tileset ที่มีอยู่แล้ว
+                Tileset t = new Tileset();
+                t.firstGid = Integer.parseInt(ts.getAttribute("firstgid"));
+                t.tileWidth = 64; // ใช้ขนาดมาตรฐาน
+                t.tileHeight = 64;
+                
+                // ใช้ tileset ที่มีอยู่แล้ว (towerDefense_tilesheet.png)
+                String baseName = "towerDefense_tilesheet.png";
+                Path sheetPath = tmxPath.getParent().resolve(baseName);
+                if (!Files.exists(sheetPath))
+                    sheetPath = Paths.get("assets").resolve(baseName);
+                
+                if (Files.exists(sheetPath)) {
+                    t.sheet = ImageIO.read(sheetPath.toFile());
+                    
+                    // คำนวณ columns และ tileCount จากขนาดภาพจริง
+                    t.columns = t.sheet.getWidth() / t.tileWidth;
+                    int rows = t.sheet.getHeight() / t.tileHeight;
+                    t.tileCount = t.columns * rows;
+                    
+                    System.out.println("External tileset loaded: " + t.sheet.getWidth() + "x" + t.sheet.getHeight() + 
+                                     " (firstGid=" + t.firstGid + ", tileCount=" + t.tileCount + ", columns=" + t.columns + ")");
+                    tilesets.add(t);
+                } else {
+                    System.err.println("External tileset image not found: " + sheetPath);
+                }
+                continue;
+            }
+            
+            Tileset t = new Tileset();
+            t.firstGid = Integer.parseInt(ts.getAttribute("firstgid"));
+            t.tileWidth = Integer.parseInt(ts.getAttribute("tilewidth"));
+            t.tileHeight = Integer.parseInt(ts.getAttribute("tileheight"));
+            t.tileCount = Integer.parseInt(ts.getAttribute("tilecount"));
+            t.columns = Integer.parseInt(ts.getAttribute("columns"));
+            
+            String baseName = new File(((Element) ts.getElementsByTagName("image").item(0))
+                    .getAttribute("source")).getName();
+            Path sheetPath = tmxPath.getParent().resolve(baseName);
+            if (!Files.exists(sheetPath))
+                sheetPath = Paths.get("assets").resolve(baseName);
+            
+            System.out.println("Looking for tileset image: " + sheetPath);
+            if (Files.exists(sheetPath)) {
+                t.sheet = ImageIO.read(sheetPath.toFile());
+                System.out.println("Tileset loaded: " + t.sheet.getWidth() + "x" + t.sheet.getHeight() + 
+                                 " (firstGid=" + t.firstGid + ", tileCount=" + t.tileCount + ")");
+                tilesets.add(t);
+            } else {
+                System.err.println("Tileset image not found: " + sheetPath);
+              
+            }
         }
-        tileset = t;
 
         NodeList layerNodes = map.getElementsByTagName("layer");
         for (int i = 0; i < layerNodes.getLength(); i++) {
