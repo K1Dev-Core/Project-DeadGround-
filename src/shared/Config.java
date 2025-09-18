@@ -59,8 +59,4 @@ public class Config {
             { 1071, 2650 }
     };
 
-    public static final int TANK_HP = 200;
-    public static final int TANK_SHOOT_DELAY = 20;
-    public static final int TANK_RANGE = 200;
-    public static final int[][] TANK_SPAWN_POINTS = { { 2502, 2238 } };
 }

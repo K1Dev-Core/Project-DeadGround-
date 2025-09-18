@@ -31,13 +31,12 @@ public class ClientPlayer {
     boolean isGodMode = false;
     int meleeCooldown = 0;
     BufferedImage meleeImage;
-    
+
     boolean isDashing = false;
     int dashCooldown = 0;
     int dashDistance = 0;
     double dashAngle = 0;
-    private List<?> tanks;
-    
+
     long deathTime = 0;
     boolean isDead = false;
     boolean movingUp = false;
@@ -53,13 +52,14 @@ public class ClientPlayer {
     Clip deathClip;
     Clip teleportClip;
 
-        int frameCounter = 0;
+    int frameCounter = 0;
 
     public String playerId;
     public String playerName;
     public String characterType;
 
-    public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName, String characterType)
+    public ClientPlayer(int startX, int startY, BufferedImage bulletImg, String playerId, String playerName,
+            String characterType)
             throws Exception {
         x = startX;
         y = startY;
@@ -107,7 +107,7 @@ public class ClientPlayer {
             AudioInputStream ais5 = AudioSystem.getAudioInputStream(new File("assets/sfx/death.wav"));
             deathClip = AudioSystem.getClip();
             deathClip.open(ais5);
-            
+
             AudioInputStream ais6 = AudioSystem.getAudioInputStream(new File("assets/sfx/teleport.wav"));
             teleportClip = AudioSystem.getClip();
             teleportClip.open(ais6);
@@ -122,7 +122,6 @@ public class ClientPlayer {
             Camera camera,
             Map<String, ClientPlayer> otherPlayers,
             List<?> tanks) {
-        this.tanks = tanks;
 
         if (hp <= 0) {
             if (!isDead) {
@@ -133,7 +132,7 @@ public class ClientPlayer {
                     deathSoundPlayed = true;
                 }
             }
-            
+
             if (isDead && System.currentTimeMillis() - deathTime >= Config.RESPAWN_TIME * 1000) {
                 hp = Config.PLAYER_HP;
                 ammo = 0;
@@ -153,7 +152,7 @@ public class ClientPlayer {
                 mouse.x + camera.camX - centerX);
         int dx = 0, dy = 0;
         isMoving = false;
-        
+
         if (isDashing) {
             double dashDx = Math.cos(dashAngle) * Config.DASH_SPEED;
             double dashDy = Math.sin(dashAngle) * Config.DASH_SPEED;
@@ -185,13 +184,13 @@ public class ClientPlayer {
 
         if (dx != 0) {
             Rectangle2D.Double nextX = new Rectangle2D.Double(x + dx, y, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers) && !collidesWithTanks(nextX))
+            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers))
                 x += dx;
         }
-        
+
         if (dy != 0) {
             Rectangle2D.Double nextY = new Rectangle2D.Double(x, y + dy, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers) && !collidesWithTanks(nextY))
+            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers))
                 y += dy;
         }
 
@@ -237,12 +236,12 @@ public class ClientPlayer {
             meleeCooldown--;
         if (dashCooldown > 0)
             dashCooldown--;
-        
+
         if (justShot && shootCooldown == 0) {
             justShot = false;
         }
     }
-    
+
     public void startDash() {
         if (dashCooldown == 0 && !isDashing) {
             isDashing = true;
@@ -252,7 +251,7 @@ public class ClientPlayer {
             playTeleportSound();
         }
     }
-    
+
     public void playTeleportSound() {
         try {
             if (teleportClip != null) {
@@ -263,23 +262,23 @@ public class ClientPlayer {
             e.printStackTrace();
         }
     }
-    
+
     public void drawDashEffect(Graphics2D g2, int drawX, int drawY) {
         g2.setColor(new Color(255, 255, 255, 150));
         g2.setStroke(new BasicStroke(3));
-        
+
         int centerX = drawX + stand.getWidth() / 2;
         int centerY = drawY + stand.getHeight() / 2;
-        
+
         double trailLength = 30;
         double trailX = centerX - Math.cos(angle) * trailLength;
         double trailY = centerY - Math.sin(angle) * trailLength;
-        
+
         g2.drawLine(centerX, centerY, (int) trailX, (int) trailY);
-        
+
         g2.setColor(new Color(255, 255, 255, 100));
         g2.fillOval(centerX - 15, centerY - 15, 30, 30);
-        
+
         g2.setColor(new Color(255, 255, 255, 200));
         g2.fillOval(centerX - 8, centerY - 8, 16, 16);
     }
@@ -303,31 +302,44 @@ public class ClientPlayer {
     public int getCenterY() {
         return y + stand.getHeight() / 2;
     }
-    
+
     public void setMovingUp(boolean moving) {
         this.movingUp = moving;
     }
-    
+
     public void setMovingDown(boolean moving) {
         this.movingDown = moving;
     }
-    
+
     public void setMovingLeft(boolean moving) {
         this.movingLeft = moving;
     }
-    
+
     public void setMovingRight(boolean moving) {
         this.movingRight = moving;
     }
-    
-    public void respawn(int mapWidth, int mapHeight, java.util.List<Rectangle2D.Double> collisions, Map<String, ClientPlayer> otherPlayers) {
+
+    public void takeDamage(int damage) {
+        if (!isGodMode) {
+            hp -= damage;
+            if (hp < 0)
+                hp = 0;
+            if (hp <= 0 && !isDead) {
+                isDead = true;
+                deathTime = System.currentTimeMillis();
+            }
+        }
+    }
+
+    public void respawn(int mapWidth, int mapHeight, java.util.List<Rectangle2D.Double> collisions,
+            Map<String, ClientPlayer> otherPlayers) {
         List<Point2D.Double> existingPositions = new ArrayList<>();
         for (ClientPlayer existingPlayer : otherPlayers.values()) {
             if (existingPlayer != null && existingPlayer.hp > 0) {
                 existingPositions.add(new Point2D.Double(existingPlayer.x, existingPlayer.y));
             }
         }
-        
+
         Point2D.Double safePos = Utils.findSafeSpawnPosition(mapWidth, mapHeight, collisions, existingPositions);
         this.x = (int) safePos.x;
         this.y = (int) safePos.y;
@@ -359,7 +371,7 @@ public class ClientPlayer {
             deathSoundPlayed = true;
         }
     }
-    
+
     public void playShootSound() {
         if (shootClip != null) {
             if (shootClip.isRunning())
@@ -373,27 +385,6 @@ public class ClientPlayer {
         for (ClientPlayer player : otherPlayers.values()) {
             if (player != null && player.hp > 0 && rect.intersects(player.bounds())) {
                 return true;
-            }
-        }
-        return false;
-    }
-    
-    private boolean collidesWithTanks(Rectangle2D.Double rect) {
-        for (Object tank : this.tanks) {
-            if (tank != null) {
-                try {
-                    int tankX = (Integer) tank.getClass().getField("x").get(tank);
-                    int tankY = (Integer) tank.getClass().getField("y").get(tank);
-                    boolean tankDead = (Boolean) tank.getClass().getField("isDead").get(tank);
-                    if (!tankDead) {
-                        Rectangle2D.Double tankRect = new Rectangle2D.Double(tankX, tankY, 64, 64);
-                        if (rect.intersects(tankRect)) {
-                            return true;
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
         return false;
@@ -421,7 +412,7 @@ public class ClientPlayer {
         }
 
         AffineTransform at = new AffineTransform();
-        
+
         if (isDashing) {
             double dashBounce = Math.sin(System.currentTimeMillis() * 0.02) * 4;
             at.translate(drawX, drawY + dashBounce);
@@ -431,16 +422,15 @@ public class ClientPlayer {
         } else {
             at.translate(drawX, drawY);
         }
-        
+
         at.rotate(angle, img.getWidth() / 2.0, img.getHeight() / 2.0);
         g2.drawImage(img, at, null);
-        
+
         if (isDashing) {
             drawDashEffect(g2, drawX, drawY);
         }
 
         drawHpBar(g2, drawX, drawY, 60, hp);
-
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
@@ -455,20 +445,21 @@ public class ClientPlayer {
         data.hasWeapon = hasWeapon;
         return data;
     }
-    
+
     public void performMeleeAttack(Map<String, ClientPlayer> otherPlayers) {
         double attackX = x + Math.cos(angle) * Config.MELEE_RANGE;
         double attackY = y + Math.sin(angle) * Config.MELEE_RANGE;
         Rectangle2D.Double attackRect = new Rectangle2D.Double(attackX - 20, attackY - 20, 40, 40);
-        
+
         for (ClientPlayer player : otherPlayers.values()) {
             if (player != null && player.hp > 0 && attackRect.intersects(player.bounds())) {
                 player.hp -= Config.MELEE_DAMAGE;
-                if (player.hp < 0) player.hp = 0;
+                if (player.hp < 0)
+                    player.hp = 0;
             }
         }
     }
-    
+
     public void pickupWeapon() {
         if (!hasWeapon) {
             hasWeapon = true;
@@ -476,7 +467,7 @@ public class ClientPlayer {
             playPickupSound();
         }
     }
-    
+
     public void playPickupSound() {
         try {
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File("assets/sfx/pickup.wav"));
@@ -489,11 +480,11 @@ public class ClientPlayer {
             e.printStackTrace();
         }
     }
-    
+
     public Rectangle2D.Double bounds() {
         return new Rectangle2D.Double(x, y, w(), h());
     }
-    
+
     int w() {
         return stand.getWidth();
     }
