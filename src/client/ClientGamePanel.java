@@ -472,9 +472,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
                                     bulletsToRemove.add(blt);
 
                                     if (chicken.hp <= 0 && oldHp > 0) {
-                                        if (localPlayer.hp < Config.PLAYER_HP) {
-                                            localPlayer.hp = Math.min(Config.PLAYER_HP,
-                                                    localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
+                                        if (localPlayer.armor < Config.PLAYER_MAX_ARMOR) {
+                                            localPlayer.armor = Math.min(Config.PLAYER_MAX_ARMOR,
+                                                    localPlayer.armor + Config.CHICKEN_ARMOR_AMOUNT);
                                         }
                                     }
                                     break;
@@ -503,18 +503,20 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     ArrayList<Chomp> chompsCopy = new ArrayList<>(chompManager.getChomps());
                     for (Chomp chomp : chompsCopy) {
                         if (chomp != null && chomp.alive) {
-                            Rectangle2D.Double chompRect = new Rectangle2D.Double(chomp.x, chomp.y, 32, 32);
+                            Rectangle2D.Double chompRect = new Rectangle2D.Double(chomp.x, chomp.y, 48, 48);
                             if (chompRect.intersects(bRect)) {
                                 boolean wasAlive = chomp.alive;
                                 chomp.takeDamage(Config.BULLET_DAMAGE);
                                 
                                 if (wasAlive && !chomp.alive) {
-                                    localPlayer.hp = Math.min(localPlayer.hp + Config.CHOMP_HEAL_AMOUNT, Config.PLAYER_MAX_HP);
+                                    if (localPlayer.hp < Config.PLAYER_MAX_HP) {
+                                        localPlayer.hp = Math.min(localPlayer.hp + Config.CHOMP_HEAL_AMOUNT, Config.PLAYER_MAX_HP);
+                                    }
                                 }
                                 
                                 for (int j = 0; j < 3; j++) {
-                                    effects.add(new HitEffect((int) (chomp.x + Math.random() * 32),
-                                            (int) (chomp.y + Math.random() * 32)));
+                                    effects.add(new HitEffect((int) (chomp.x + Math.random() * 48),
+                                            (int) (chomp.y + Math.random() * 48)));
                                 }
                                 bulletsToRemove.add(blt);
                                 break;
@@ -720,6 +722,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 14));
         int y = 20;
+        
         g2.drawString("Online Players:", 10, y);
         y += 20;
         g2.drawString(localPlayer.playerName + " (You) - Kills: " + localPlayer.kills, 10, y);

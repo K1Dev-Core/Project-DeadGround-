@@ -8,7 +8,8 @@ public class Config {
     public static final int DASH_DISTANCE = 300;
     public static final int DASH_COOLDOWN = 1000;
     public static final int PLAYER_HP = 100;
-    public static final int PLAYER_MAX_HP = 250;
+    public static final int PLAYER_MAX_HP = PLAYER_HP;
+    public static final int PLAYER_MAX_ARMOR = 50;
     public static final int PLAYER_SHOOT_DELAY = 80;
     public static final int MAX_AMMO = 20;
     public static final int RELOAD_TIME = 600;
@@ -264,6 +265,7 @@ public class Config {
     public static int CHICKEN_RESPAWN_TIME = 200;
     public static int CHICKEN_MOVEMENT_SPEED = 1;
     public static int CHICKEN_HEAL_AMOUNT = 50;
+    public static int CHICKEN_ARMOR_AMOUNT = 10;
     
    
     public static int ZOMBIE_HP = 80;
@@ -293,12 +295,13 @@ public class Config {
     public static int CHOMP_ATTACK_RANGE = 50;
     public static int CHOMP_ATTACK_COOLDOWN = 40;
     public static int CHOMP_HEAL_AMOUNT = 20;
+    public static int CHOMP_ARMOR_AMOUNT = 5;
     public static int MAX_TOTAL_CHOMPS = 15;
     
     public static int CHOMP_DETECTION_RANGE = 300;
     public static int CHOMP_CHASE_RANGE = 500;
-    public static int CHOMP_AVOIDANCE_RANGE = 40;
-    public static int CHOMP_AVOIDANCE_STRENGTH = 30;
+    public static int CHOMP_AVOIDANCE_RANGE = 80;
+    public static int CHOMP_AVOIDANCE_STRENGTH = 50;
     public static int CHOMP_RANDOM_MOVE_RANGE = 150;
     public static int CHOMP_RANDOM_MOVE_TIMER = 100;
     

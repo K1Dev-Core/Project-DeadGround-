@@ -137,8 +137,8 @@ public class Chomp {
                 }
             }
             
-            targetX = (int) (nearestPlayer.getX() + Math.cos(angleToPlayer) * 40 + avoidX);
-            targetY = (int) (nearestPlayer.getY() + Math.sin(angleToPlayer) * 40 + avoidY);
+            targetX = (int) (nearestPlayer.getX() + Math.cos(angleToPlayer) * 60 + avoidX);
+            targetY = (int) (nearestPlayer.getY() + Math.sin(angleToPlayer) * 60 + avoidY);
             
             if (nearestDistance <= Config.CHOMP_ATTACK_RANGE && attackCooldown <= 0) {
                 nearestPlayer.takeDamage(Config.CHOMP_DAMAGE);
@@ -173,8 +173,8 @@ public class Chomp {
                 double targetDistance = Math.sqrt((targetPlayer.getX() - x) * (targetPlayer.getX() - x) + (targetPlayer.getY() - y) * (targetPlayer.getY() - y));
                 if (targetDistance <= Config.CHOMP_CHASE_RANGE) {
                     double angleToTarget = Math.atan2(targetPlayer.getY() - y, targetPlayer.getX() - x);
-                    targetX = (int) (targetPlayer.getX() + Math.cos(angleToTarget) * 40 + avoidX);
-                    targetY = (int) (targetPlayer.getY() + Math.sin(angleToTarget) * 40 + avoidY);
+                    targetX = (int) (targetPlayer.getX() + Math.cos(angleToTarget) * 60 + avoidX);
+                    targetY = (int) (targetPlayer.getY() + Math.sin(angleToTarget) * 60 + avoidY);
                 } else {
                     movementTimer--;
                     if (movementTimer <= 0) {
@@ -204,12 +204,12 @@ public class Chomp {
             int newX = (int) (x + moveX);
             int newY = (int) (y + moveY);
             
-            Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, 32, 32);
+            Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, 48, 48);
             if (!Utils.rectHitsCollision(testRect, collisions)) {
                 boolean canMove = true;
                 for (Chomp otherChomp : otherChomps) {
                     if (otherChomp != this && otherChomp.alive) {
-                        Rectangle2D.Double otherRect = new Rectangle2D.Double(otherChomp.x, otherChomp.y, 32, 32);
+                        Rectangle2D.Double otherRect = new Rectangle2D.Double(otherChomp.x, otherChomp.y, 48, 48);
                         if (testRect.intersects(otherRect)) {
                             canMove = false;
                             break;
@@ -263,15 +263,15 @@ public class Chomp {
         BufferedImage currentSprite = idleSprites[direction][currentFrame];
         
         if (currentSprite != null) {
-            g2.drawImage(currentSprite, screenX, screenY, 32, 32, null);
+            g2.drawImage(currentSprite, screenX, screenY, 48, 48, null);
         }
         
         g2.setColor(Color.BLACK);
-        g2.fillRect(screenX - 15, screenY - 20, 30, 4);
+        g2.fillRect(screenX - 20, screenY - 25, 40, 6);
         g2.setColor(Color.RED);
-        g2.fillRect(screenX - 14, screenY - 19, 28, 2);
-        int healthWidth = (int) ((double) hp / maxHp * 28);
+        g2.fillRect(screenX - 19, screenY - 24, 38, 4);
+        int healthWidth = (int) ((double) hp / maxHp * 38);
         g2.setColor(Color.GREEN);
-        g2.fillRect(screenX - 14, screenY - 19, healthWidth, 2);
+        g2.fillRect(screenX - 19, screenY - 24, healthWidth, 4);
     }
 }

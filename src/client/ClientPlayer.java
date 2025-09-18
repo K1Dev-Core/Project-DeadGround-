@@ -16,6 +16,7 @@ import shared.*;
 public class ClientPlayer implements IPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
+    int armor = 0;
     int kills = 0;
     BufferedImage stand, shoot, reload, gunStand;
     double angle = 0;
@@ -135,6 +136,7 @@ public class ClientPlayer implements IPlayer {
 
             if (isDead && System.currentTimeMillis() - deathTime >= Config.RESPAWN_TIME * 1000) {
                 hp = Config.PLAYER_HP;
+        armor = 0;
                 ammo = 0;
                 hasWeapon = false;
                 isDead = false;
@@ -329,7 +331,15 @@ public class ClientPlayer implements IPlayer {
 
     public void takeDamage(int damage) {
         if (!isGodMode) {
-            hp -= damage;
+            if (armor > 0) {
+                armor -= damage;
+                if (armor < 0) {
+                    hp += armor;
+                    armor = 0;
+                }
+            } else {
+                hp -= damage;
+            }
             if (hp < 0)
                 hp = 0;
             if (hp <= 0 && !isDead) {
@@ -439,6 +449,7 @@ public class ClientPlayer implements IPlayer {
         }
 
         drawHpBar(g2, drawX, drawY, 60, hp);
+        drawArmorBar(g2, drawX, drawY, 60, armor);
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
@@ -508,5 +519,16 @@ public class ClientPlayer implements IPlayer {
         g2.fillRect(drawX, drawY - 10, (int) (width * (hp / 100.0)), 5);
         g2.setColor(Color.black);
         g2.drawRect(drawX, drawY - 10, width, 5);
+    }
+    
+    private void drawArmorBar(Graphics2D g2, int drawX, int drawY, int width, int armor) {
+        if (armor <= 0) return;
+        
+        g2.setColor(new Color(50, 50, 50));
+        g2.fillRect(drawX, drawY - 20, width, 5);
+        g2.setColor(new Color(0, 200, 200));
+        g2.fillRect(drawX, drawY - 20, (int) (width * (armor / (double)Config.PLAYER_MAX_ARMOR)), 5);
+        g2.setColor(Color.black);
+        g2.drawRect(drawX, drawY - 20, width, 5);
     }
 }

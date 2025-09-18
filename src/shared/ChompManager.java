@@ -93,7 +93,7 @@ public class ChompManager {
             int newX = (int) (chomp.x - moveX);
             int newY = (int) (chomp.y - moveY);
             
-            Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, 32, 32);
+            Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, 48, 48);
             if (collisions == null || !Utils.rectHitsCollision(testRect, collisions)) {
                 chomp.x = newX;
                 chomp.y = newY;
@@ -111,7 +111,7 @@ public class ChompManager {
             int x = centerX + random.nextInt(radius * 2) - radius;
             int y = centerY + random.nextInt(radius * 2) - radius;
             
-            Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 32);
+            Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 48, 48);
             if (!Utils.rectHitsCollision(testRect, collisions)) {
                 chomps.add(new Chomp(x, y));
                 System.out.println("Chomp spawned in zone " + zoneIndex + " at " + x + "," + y);
