@@ -6,6 +6,9 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.List;
 import javax.imageio.ImageIO;
@@ -42,15 +45,28 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private long lastFPSTime = 0;
     private int frameCount = 0;
     private int currentFPS = 0;
+    private String gameVersion = "Unknown";
 
     private NetworkClient networkClient;
+
+    private String loadVersion() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get("version.txt"));
+            if (!lines.isEmpty()) {
+                return lines.get(0).trim();
+            }
+        } catch (IOException e) {
+            System.out.println("Could not read version.txt: " + e.getMessage());
+        }
+        return "Unknown";
+    }
 
     public ClientGamePanel(String playerName, String playerId, String serverHost, String characterType)
             throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
         setFocusable(true);
-        setDoubleBuffered(true);
+        setDoubleBuffered(false);
 
         if (Config.USE_ACCELERATED_GRAPHICS) {
             System.setProperty("sun.java2d.opengl", Config.ENABLE_OPENGL ? "true" : "false");
@@ -177,6 +193,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         NotificationSystem.addNotification("Connected to " + serverHost, Color.GREEN);
 
         gameStartTime = System.currentTimeMillis();
+        gameVersion = loadVersion();
 
         for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
             int x, y;
@@ -224,14 +241,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
 
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
 
         int viewW = getWidth();
         int viewH = getHeight();
@@ -245,77 +256,61 @@ public class ClientGamePanel extends JPanel implements Runnable {
         for (MapLoader.Layer layer : mapLoader.layers)
             drawLayer(g2, layer, startCol, startRow, endCol, endRow);
 
-        synchronized (effects) {
-            ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
-            for (HitEffect e : effectsCopy) {
-                if (e != null) {
-                    e.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
+        for (HitEffect e : effectsCopy) {
+            if (e != null) {
+                e.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (explosionEffects) {
-            ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
-            for (ExplosionEffect e : explosionCopy) {
-                if (e != null) {
-                    e.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
+        for (ExplosionEffect e : explosionCopy) {
+            if (e != null) {
+                e.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (corpses) {
-            ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
-            for (CorpseEffect corpse : corpsesCopy) {
-                if (corpse != null) {
-                    corpse.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<CorpseEffect> corpsesCopy = new ArrayList<>(corpses);
+        for (CorpseEffect corpse : corpsesCopy) {
+            if (corpse != null) {
+                corpse.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (chickens) {
-            ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
-            for (Chicken chicken : chickensCopy) {
-                if (chicken != null) {
-                    chicken.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
+        for (Chicken chicken : chickensCopy) {
+            if (chicken != null) {
+                chicken.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (weapons) {
-            ArrayList<Weapon> weaponsCopy = new ArrayList<>(weapons);
-            for (Weapon weapon : weaponsCopy) {
-                if (weapon != null) {
-                    weapon.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<Weapon> weaponsCopy = new ArrayList<>(weapons);
+        for (Weapon weapon : weaponsCopy) {
+            if (weapon != null) {
+                weapon.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (tanks) {
-            ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
-            for (Tank tank : tanksCopy) {
-                if (tank != null && !tank.isDead) {
-                    tank.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
+        for (Tank tank : tanksCopy) {
+            if (tank != null && !tank.isDead) {
+                tank.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (tankBullets) {
-            ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
-            for (TankBullet bullet : tankBulletsCopy) {
-                if (bullet != null) {
-                    bullet.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
+        for (TankBullet bullet : tankBulletsCopy) {
+            if (bullet != null) {
+                bullet.draw(g2, camera.camX, camera.camY);
             }
         }
 
-        synchronized (otherPlayers) {
-            ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
-            for (ClientPlayer player : playersCopy) {
-                if (player != null) {
-                    player.draw(g2, camera.camX, camera.camY, mousePoint, camera);
-                    if (player.isDashing) {
-                        player.drawDashEffect(g2, player.x - camera.camX, player.y - camera.camY);
-                    }
+        ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
+        for (ClientPlayer player : playersCopy) {
+            if (player != null) {
+                player.draw(g2, camera.camX, camera.camY, mousePoint, camera);
+                if (player.isDashing) {
+                    player.drawDashEffect(g2, player.x - camera.camX, player.y - camera.camY);
                 }
             }
         }
@@ -330,12 +325,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
             drawDeathScreen(g2);
         }
 
-        synchronized (bullets) {
-            ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
-            for (Bullet b : bulletsCopy) {
-                if (b != null) {
-                    b.draw(g2, camera.camX, camera.camY);
-                }
+        ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
+        for (Bullet b : bulletsCopy) {
+            if (b != null) {
+                b.draw(g2, camera.camX, camera.camY);
             }
         }
 
@@ -414,10 +407,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
     @Override
     public void run() {
         long frameTime = 1000L / Config.FPS;
-        long lastTime = System.currentTimeMillis();
+        long lastTime = System.nanoTime() / 1000000;
 
         while (running) {
-            long currentTime = System.currentTimeMillis();
+            long currentTime = System.nanoTime() / 1000000;
             long deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
@@ -568,7 +561,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 for (int i = 0; i < chickens.size(); i++) {
                     Chicken chicken = chickens.get(i);
                     if (chicken != null) {
-                        chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH);
+                        chicken.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH, chickens);
                         if (chicken.hp <= 0) {
                             chickensToRemove.add(chicken);
                             chickenRespawnTimes.add(chickenCurrentTime);
@@ -665,7 +658,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 if (sleep > 0) {
                     Thread.sleep(sleep);
                 }
-            } catch (InterruptedException ignored) {
+            } catch (InterruptedException e) {
+                break;
             }
         }
     }
@@ -742,9 +736,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
-        g2.drawString("X: " + (int) localPlayer.x, 15, getHeight() - 55);
-        g2.drawString("Y: " + (int) localPlayer.y, 15, getHeight() - 40);
-        g2.drawString("FPS: " + currentFPS, 15, getHeight() - 25);
+        g2.drawString("X: " + (int) localPlayer.x, 15, getHeight() - 70);
+        g2.drawString("Y: " + (int) localPlayer.y, 15, getHeight() - 55);
+        g2.drawString("FPS: " + currentFPS, 15, getHeight() - 40);
+        g2.drawString("Version: " + gameVersion, 15, getHeight() - 25);
 
     }
 
