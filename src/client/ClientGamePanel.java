@@ -29,8 +29,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private java.util.List<Chicken> chickens = new ArrayList<>();
     private java.util.List<Long> chickenRespawnTimes = new ArrayList<>();
     private java.util.List<Weapon> weapons = new ArrayList<>();
-    private java.util.List<Tank> tanks = new ArrayList<>();
-    private java.util.List<TankBullet> tankBullets = new ArrayList<>();
     private java.util.List<ExplosionEffect> explosionEffects = new ArrayList<>();
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
@@ -227,11 +225,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
             weapons.add(new Weapon(i, point[0], point[1]));
         }
 
-        for (int i = 0; i < Config.TANK_SPAWN_POINTS.length; i++) {
-            int[] point = Config.TANK_SPAWN_POINTS[i];
-            tanks.add(new Tank(point[0], point[1]));
-        }
-
         loop = new Thread(this, "game-loop");
         loop.start();
     }
@@ -288,20 +281,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
         for (Weapon weapon : weaponsCopy) {
             if (weapon != null) {
                 weapon.draw(g2, camera.camX, camera.camY);
-            }
-        }
-
-        ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
-        for (Tank tank : tanksCopy) {
-            if (tank != null && !tank.isDead) {
-                tank.draw(g2, camera.camX, camera.camY);
-            }
-        }
-
-        ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
-        for (TankBullet bullet : tankBulletsCopy) {
-            if (bullet != null) {
-                bullet.draw(g2, camera.camX, camera.camY);
             }
         }
 
@@ -422,39 +401,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
-                    camera, otherPlayers, tanks);
-
-            synchronized (tanks) {
-                ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
-                for (Tank tank : tanksCopy) {
-                    if (tank != null && !tank.isDead) {
-                        tank.update(localPlayer, mapLoader.collisions);
-
-                        if (tank.canShoot()) {
-                            System.out.println("Tank shooting at angle: " + Math.toDegrees(tank.angle));
-                            tankBullets.add(new TankBullet(tank.x + 32, tank.y + 32, tank.angle));
-                            tank.resetShootCooldown();
-                            tank.playExplosionSound();
-                        }
-                    }
-                }
-            }
-
-            synchronized (tankBullets) {
-                ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
-                ArrayList<TankBullet> tankBulletsToRemove = new ArrayList<>();
-                for (TankBullet bullet : tankBulletsCopy) {
-                    if (bullet != null) {
-                        if (!bullet.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
-                            explosionEffects.add(new ExplosionEffect((int) bullet.x, (int) bullet.y));
-                            tankBulletsToRemove.add(bullet);
-                        }
-                    }
-                }
-                for (TankBullet bullet : tankBulletsToRemove) {
-                    tankBullets.remove(bullet);
-                }
-            }
+                    camera, otherPlayers, new ArrayList<>());
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
