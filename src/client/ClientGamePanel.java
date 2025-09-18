@@ -11,6 +11,7 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import shared.*;
+import shared.MapLoader;
 
 public class ClientGamePanel extends JPanel implements Runnable {
     private MapLoader mapLoader;
@@ -38,14 +39,19 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private long gameStartTime;
     private boolean showHUDHint = true;
 
+    private long lastFPSTime = 0;
+    private int frameCount = 0;
+    private int currentFPS = 0;
+
     private NetworkClient networkClient;
 
-    public ClientGamePanel(String playerName, String playerId, String serverHost, String characterType) throws Exception {
+    public ClientGamePanel(String playerName, String playerId, String serverHost, String characterType)
+            throws Exception {
         setPreferredSize(new Dimension(1280, 768));
         setBackground(Color.black);
         setFocusable(true);
         setDoubleBuffered(true);
-        
+
         if (Config.USE_ACCELERATED_GRAPHICS) {
             System.setProperty("sun.java2d.opengl", Config.ENABLE_OPENGL ? "true" : "false");
             System.setProperty("sun.java2d.d3d", "true");
@@ -53,14 +59,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
             System.setProperty("sun.java2d.translaccel", "true");
             System.setProperty("sun.java2d.ddscale", "true");
         }
-        
+
         requestFocusInWindow();
         setCursor(Toolkit.getDefaultToolkit().createCustomCursor(
-            new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
+                new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "invisible"));
 
         mapLoader = new MapLoader();
         try {
-        mapLoader.load("assets/map/mappgameeeee.tmx");
+            mapLoader.load("assets/map/mappgameeeee.tmx");
             System.out.println("Map loaded successfully:");
             System.out.println("  Map size: " + mapLoader.mapWidthTiles + "x" + mapLoader.mapHeightTiles + " tiles");
             System.out.println("  Pixel size: " + mapLoader.mapPixelW + "x" + mapLoader.mapPixelH);
@@ -69,7 +75,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
             System.out.println("  Collisions: " + mapLoader.collisions.size());
             for (int i = 0; i < mapLoader.layers.size(); i++) {
                 MapLoader.Layer layer = mapLoader.layers.get(i);
-                System.out.println("    Layer " + i + ": " + layer.name + " (" + layer.width + "x" + layer.height + ")");
+                System.out
+                        .println("    Layer " + i + ": " + layer.name + " (" + layer.width + "x" + layer.height + ")");
             }
         } catch (Exception e) {
             System.err.println("Failed to load map: " + e.getMessage());
@@ -82,10 +89,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
             customCursor = null;
         }
 
-        Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions);
-        localPlayer = new ClientPlayer((int)spawnPos.x, (int)spawnPos.y, null, playerId, playerName, characterType);
-        
-        
+        Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH,
+                mapLoader.collisions);
+        localPlayer = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null, playerId, playerName, characterType);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -144,7 +150,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         break;
                 }
             }
-            
+
             @Override
             public void keyReleased(KeyEvent e) {
                 switch (e.getKeyCode()) {
@@ -169,28 +175,28 @@ public class ClientGamePanel extends JPanel implements Runnable {
         networkClient.sendPlayerJoin(localPlayer.toPlayerData());
 
         NotificationSystem.addNotification("Connected to " + serverHost, Color.GREEN);
-        
+
         gameStartTime = System.currentTimeMillis();
-        
+
         for (int i = 0; i < Config.CHICKEN_SPAWN_COUNT; i++) {
             int x, y;
             boolean validPosition = false;
             int attempts = 0;
-            
+
             while (!validPosition && attempts < 50) {
                 int[] zone = Config.CHICKEN_SPAWN_ZONES[i % Config.CHICKEN_SPAWN_ZONES.length];
                 int zoneX = zone[0];
                 int zoneY = zone[1];
                 int zoneSize = zone[2];
-                
-                x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
-                y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
-                
+
+                x = zoneX + (int) (Math.random() * zoneSize) - zoneSize / 2;
+                y = zoneY + (int) (Math.random() * zoneSize) - zoneSize / 2;
+
                 Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
                 boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
-                                 x >= 50 && y >= 50 && 
-                                 x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
-                
+                        x >= 50 && y >= 50 &&
+                        x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
+
                 if (canSpawn) {
                     chickens.add(new Chicken(i, x, y));
                     validPosition = true;
@@ -203,7 +209,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
             int[] point = Config.WEAPON_SPAWN_POINTS[i];
             weapons.add(new Weapon(i, point[0], point[1]));
         }
-        
+
         for (int i = 0; i < Config.TANK_SPAWN_POINTS.length; i++) {
             int[] point = Config.TANK_SPAWN_POINTS[i];
             tanks.add(new Tank(point[0], point[1]));
@@ -217,7 +223,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
-        
+
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
@@ -231,8 +237,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
         int viewH = getHeight();
         int startCol = Math.max(0, camera.camX / mapLoader.tileWidth - Config.RENDER_DISTANCE);
         int startRow = Math.max(0, camera.camY / mapLoader.tileHeight - Config.RENDER_DISTANCE);
-        int endCol = Math.min(mapLoader.mapWidthTiles - 1, (camera.camX + viewW) / mapLoader.tileWidth + Config.RENDER_DISTANCE);
-        int endRow = Math.min(mapLoader.mapHeightTiles - 1, (camera.camY + viewH) / mapLoader.tileHeight + Config.RENDER_DISTANCE);
+        int endCol = Math.min(mapLoader.mapWidthTiles - 1,
+                (camera.camX + viewW) / mapLoader.tileWidth + Config.RENDER_DISTANCE);
+        int endRow = Math.min(mapLoader.mapHeightTiles - 1,
+                (camera.camY + viewH) / mapLoader.tileHeight + Config.RENDER_DISTANCE);
 
         for (MapLoader.Layer layer : mapLoader.layers)
             drawLayer(g2, layer, startCol, startRow, endCol, endRow);
@@ -245,7 +253,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-        
+
         synchronized (explosionEffects) {
             ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
             for (ExplosionEffect e : explosionCopy) {
@@ -281,7 +289,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-        
+
         synchronized (tanks) {
             ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
             for (Tank tank : tanksCopy) {
@@ -290,7 +298,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-        
+
         synchronized (tankBullets) {
             ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
             for (TankBullet bullet : tankBulletsCopy) {
@@ -311,13 +319,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
         }
-        
+
         localPlayer.draw(g2, camera.camX, camera.camY, mousePoint, camera);
-        
+
         if (localPlayer.isGodMode) {
             drawGodModeLines(g2);
         }
-        
+
         if (localPlayer.hp <= 0) {
             drawDeathScreen(g2);
         }
@@ -326,19 +334,19 @@ public class ClientGamePanel extends JPanel implements Runnable {
             ArrayList<Bullet> bulletsCopy = new ArrayList<>(bullets);
             for (Bullet b : bulletsCopy) {
                 if (b != null) {
-            b.draw(g2, camera.camX, camera.camY);
+                    b.draw(g2, camera.camX, camera.camY);
                 }
             }
         }
 
         if (showHUD) {
-        drawHUD(g2);
+            drawHUD(g2);
         }
         drawDebugInfo(g2);
-        
+
         long currentTime = System.currentTimeMillis();
         long timeSinceStart = currentTime - gameStartTime;
-        
+
         if (showHUDHint && timeSinceStart < 20000) {
             g2.setColor(Color.WHITE);
             g2.setFont(new Font("Arial", Font.BOLD, 14));
@@ -346,6 +354,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
         }
 
         NotificationSystem.drawNotifications(g2, getWidth(), getHeight());
+
+        long fpsTime = System.currentTimeMillis();
+        frameCount++;
+        if (fpsTime - lastFPSTime >= 1000) {
+            currentFPS = frameCount;
+            frameCount = 0;
+            lastFPSTime = fpsTime;
+        }
 
         if (customCursor != null) {
             g2.drawImage(customCursor, mousePoint.x - 16, mousePoint.y - 16, 32, 32, null);
@@ -362,9 +378,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
             FontMetrics fm = g2.getFontMetrics();
             int textWidth = fm.stringWidth(ammoText);
-            g2.drawString(ammoText, mousePoint.x - textWidth/2, mousePoint.y - 25);
+            g2.drawString(ammoText, mousePoint.x - textWidth / 2, mousePoint.y - 25);
         }
-        
+
         drawDashCooldownBar(g2);
 
         g2.dispose();
@@ -376,7 +392,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         int tileH = mapLoader.tileHeight;
         int camX = camera.camX;
         int camY = camera.camY;
-        
+
         for (int r = startRow; r <= endRow; r++) {
             for (int c = startCol; c <= endCol; c++) {
                 int idx = r * layer.width + c;
@@ -399,13 +415,14 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public void run() {
         long frameTime = 1000L / Config.FPS;
         long lastTime = System.currentTimeMillis();
-        
+
         while (running) {
             long currentTime = System.currentTimeMillis();
             long deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
-            if (localPlayer.isDead && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
+            if (localPlayer.isDead
+                    && System.currentTimeMillis() - localPlayer.deathTime >= Config.RESPAWN_TIME * 1000) {
                 localPlayer.respawn(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, otherPlayers);
                 NotificationSystem.addNotification("You respawned!", Color.GREEN);
             }
@@ -413,13 +430,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera, otherPlayers, tanks);
-            
+
             synchronized (tanks) {
                 ArrayList<Tank> tanksCopy = new ArrayList<>(tanks);
                 for (Tank tank : tanksCopy) {
                     if (tank != null && !tank.isDead) {
                         tank.update(localPlayer, mapLoader.collisions);
-                        
+
                         if (tank.canShoot()) {
                             System.out.println("Tank shooting at angle: " + Math.toDegrees(tank.angle));
                             tankBullets.add(new TankBullet(tank.x + 32, tank.y + 32, tank.angle));
@@ -429,7 +446,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     }
                 }
             }
-            
+
             synchronized (tankBullets) {
                 ArrayList<TankBullet> tankBulletsCopy = new ArrayList<>(tankBullets);
                 ArrayList<TankBullet> tankBulletsToRemove = new ArrayList<>();
@@ -446,12 +463,10 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
 
-
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
-            networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
+                networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
             }
-            
-         
+
             if (networkClient != null && networkClient.lastPlayerData != null) {
                 localPlayer.isGodMode = networkClient.lastPlayerData.isGodMode;
             }
@@ -464,37 +479,37 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         bullets.remove(i);
                         continue;
                     }
-                    
-                if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
+
+                    if (!blt.update(mapLoader.collisions, mapLoader.mapPixelW, mapLoader.mapPixelH)) {
                         bulletsToRemove.add(blt);
-                    continue;
-                }
-                    
+                        continue;
+                    }
+
                     if (blt.justSpawned) {
                         networkClient.sendBulletSpawn(blt.toBulletData());
                         blt.justSpawned = false;
                     }
-                    
-                Rectangle2D.Double bRect = blt.bounds();
-                    
-                    
+
+                    Rectangle2D.Double bRect = blt.bounds();
+
                     synchronized (otherPlayers) {
                         ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
                         for (ClientPlayer player : playersCopy) {
                             if (player != null && player.hp > 0 && !player.playerId.equals(localPlayer.playerId)) {
                                 Rectangle2D.Double playerRect = player.bounds();
                                 if (playerRect.intersects(bRect)) {
-                                    System.out.println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
-                        effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
+                                    System.out
+                                            .println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
+                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
                                     bulletsToRemove.add(blt);
-                                    
+
                                     networkClient.sendPlayerHit(player.playerId, Config.BULLET_DAMAGE);
                                     break;
                                 }
                             }
                         }
                     }
-                    
+
                     synchronized (chickens) {
                         ArrayList<Chicken> chickensCopy = new ArrayList<>(chickens);
                         for (Chicken chicken : chickensCopy) {
@@ -504,24 +519,25 @@ public class ClientGamePanel extends JPanel implements Runnable {
                                     int oldHp = chicken.hp;
                                     chicken.takeDamage(Config.BULLET_DAMAGE);
                                     for (int j = 0; j < 5; j++) {
-                                        effects.add(new HitEffect((int) (chicken.x + Math.random() * 32), (int) (chicken.y + Math.random() * 32)));
+                                        effects.add(new HitEffect((int) (chicken.x + Math.random() * 32),
+                                                (int) (chicken.y + Math.random() * 32)));
                                     }
                                     bulletsToRemove.add(blt);
-                                    
+
                                     if (chicken.hp <= 0 && oldHp > 0) {
                                         if (localPlayer.hp < Config.PLAYER_HP) {
-                                            localPlayer.hp = Math.min(Config.PLAYER_HP, localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
+                                            localPlayer.hp = Math.min(Config.PLAYER_HP,
+                                                    localPlayer.hp + Config.CHICKEN_HEAL_AMOUNT);
                                         }
                                     }
-                        break;
+                                    break;
                                 }
                             }
                         }
                     }
-                    
-                    
+
                 }
-                
+
                 for (Bullet blt : bulletsToRemove) {
                     bullets.remove(blt);
                 }
@@ -532,8 +548,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 for (Weapon weapon : weaponsCopy) {
                     if (weapon != null && !weapon.collected) {
                         weapon.update();
-                        
-                        double distance = Math.sqrt(Math.pow(localPlayer.x - weapon.x, 2) + Math.pow(localPlayer.y - weapon.y, 2));
+
+                        double distance = Math
+                                .sqrt(Math.pow(localPlayer.x - weapon.x, 2) + Math.pow(localPlayer.y - weapon.y, 2));
                         if (distance <= Config.WEAPON_PICKUP_RANGE) {
                             localPlayer.pickupWeapon();
                             weapon.collected = true;
@@ -547,7 +564,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 ArrayList<Chicken> chickensToRemove = new ArrayList<>();
                 ArrayList<Long> respawnTimesToRemove = new ArrayList<>();
                 long chickenCurrentTime = System.currentTimeMillis();
-                
+
                 for (int i = 0; i < chickens.size(); i++) {
                     Chicken chicken = chickens.get(i);
                     if (chicken != null) {
@@ -558,31 +575,32 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         }
                     }
                 }
-                
+
                 for (Chicken chicken : chickensToRemove) {
                     chickens.remove(chicken);
                 }
-                
+
                 for (int i = chickenRespawnTimes.size() - 1; i >= 0; i--) {
                     if (chickenCurrentTime - chickenRespawnTimes.get(i) >= Config.CHICKEN_RESPAWN_TIME * 1000) {
                         int x, y;
                         boolean validPosition = false;
                         int attempts = 0;
-                        
+
                         while (!validPosition && attempts < 50) {
-                            int[] zone = Config.CHICKEN_SPAWN_ZONES[(int)(Math.random() * Config.CHICKEN_SPAWN_ZONES.length)];
+                            int[] zone = Config.CHICKEN_SPAWN_ZONES[(int) (Math.random()
+                                    * Config.CHICKEN_SPAWN_ZONES.length)];
                             int zoneX = zone[0];
                             int zoneY = zone[1];
                             int zoneSize = zone[2];
-                            
-                            x = zoneX + (int)(Math.random() * zoneSize) - zoneSize/2;
-                            y = zoneY + (int)(Math.random() * zoneSize) - zoneSize/2;
-                            
+
+                            x = zoneX + (int) (Math.random() * zoneSize) - zoneSize / 2;
+                            y = zoneY + (int) (Math.random() * zoneSize) - zoneSize / 2;
+
                             Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 34);
                             boolean canSpawn = !Utils.rectHitsCollision(testRect, mapLoader.collisions) &&
-                                             x >= 50 && y >= 50 && 
-                                             x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
-                            
+                                    x >= 50 && y >= 50 &&
+                                    x < mapLoader.mapPixelW - 82 && y < mapLoader.mapPixelH - 84;
+
                             if (canSpawn) {
                                 chickens.add(new Chicken(chickens.size(), x, y));
                                 validPosition = true;
@@ -593,7 +611,6 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     }
                 }
             }
-            
 
             synchronized (effects) {
                 ArrayList<HitEffect> effectsCopy = new ArrayList<>(effects);
@@ -607,7 +624,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     effects.remove(e);
                 }
             }
-            
+
             synchronized (explosionEffects) {
                 ArrayList<ExplosionEffect> explosionCopy = new ArrayList<>(explosionEffects);
                 ArrayList<ExplosionEffect> explosionToRemove = new ArrayList<>();
@@ -623,7 +640,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     explosionEffects.remove(e);
                 }
             }
-            
+
             synchronized (corpses) {
                 ArrayList<CorpseEffect> corpsesToRemove = new ArrayList<>();
                 for (CorpseEffect corpse : corpses) {
@@ -641,12 +658,12 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     mapLoader.mapPixelW, mapLoader.mapPixelH);
 
             repaint();
-            
+
             long targetTime = frameTime;
             long sleep = Math.max(1, targetTime - deltaTime);
             try {
                 if (sleep > 0) {
-                Thread.sleep(sleep);
+                    Thread.sleep(sleep);
                 }
             } catch (InterruptedException ignored) {
             }
@@ -677,29 +694,28 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     private void drawDashCooldownBar(Graphics2D g2) {
         if (localPlayer.dashCooldown > 0) {
-        int screenWidth = getWidth();
-        int screenHeight = getHeight();
+            int screenWidth = getWidth();
+            int screenHeight = getHeight();
             int barWidth = 120;
             int barHeight = 8;
             int x = (screenWidth - barWidth) / 2;
             int y = screenHeight - 30;
-            
+
             g2.setColor(new Color(0, 0, 0, 100));
             g2.fillRect(x - 1, y - 1, barWidth + 2, barHeight + 2);
-            
+
             g2.setColor(Color.GRAY);
             g2.fillRect(x, y, barWidth, barHeight);
-            
+
             double progress = 1.0 - (double) localPlayer.dashCooldown / Config.DASH_COOLDOWN;
             int fillWidth = (int) (barWidth * progress);
-            
+
             g2.setColor(new Color(237, 207, 9, 205));
             g2.fillRect(x, y, fillWidth, barHeight);
         }
     }
 
     private void drawHUD(Graphics2D g2) {
-
 
         g2.setColor(new Color(0, 0, 0, 180));
         g2.fillRect(0, 0, 250, 200);
@@ -716,61 +732,63 @@ public class ClientGamePanel extends JPanel implements Runnable {
             for (ClientPlayer player : playersCopy2) {
                 if (player != null) {
                     g2.drawString(player.playerName + " - Kills: " + player.kills, 10, y);
-            y += 20;
+                    y += 20;
                 }
             }
         }
     }
-    
+
     private void drawDebugInfo(Graphics2D g2) {
-    
+
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
-        g2.drawString("X: " + (int)localPlayer.x, 15, getHeight() - 40);
-        g2.drawString("Y: " + (int)localPlayer.y, 15, getHeight() - 25);
- 
+        g2.drawString("X: " + (int) localPlayer.x, 15, getHeight() - 55);
+        g2.drawString("Y: " + (int) localPlayer.y, 15, getHeight() - 40);
+        g2.drawString("FPS: " + currentFPS, 15, getHeight() - 25);
+
     }
-    
+
     private void drawDeathScreen(Graphics2D g2) {
         int screenWidth = getWidth();
         int screenHeight = getHeight();
-        
+
         g2.setColor(new Color(0, 0, 0, 150));
         g2.fillRect(0, 0, screenWidth, screenHeight);
-        
+
         long timeLeft = Config.RESPAWN_TIME - ((System.currentTimeMillis() - localPlayer.deathTime) / 1000);
-        if (timeLeft < 0) timeLeft = 0;
-        
+        if (timeLeft < 0)
+            timeLeft = 0;
+
         g2.setFont(new Font("Arial", Font.BOLD, 48));
         g2.setColor(Color.WHITE);
-        
+
         FontMetrics fm = g2.getFontMetrics();
         String countdownText = "RESPAWN IN: " + timeLeft;
         int textX = (screenWidth - fm.stringWidth(countdownText)) / 2;
         int textY = screenHeight / 2;
-        
+
         g2.setColor(Color.BLACK);
         g2.drawString(countdownText, textX - 2, textY - 2);
         g2.drawString(countdownText, textX + 2, textY - 2);
         g2.drawString(countdownText, textX - 2, textY + 2);
         g2.drawString(countdownText, textX + 2, textY + 2);
-        
+
         g2.setColor(Color.WHITE);
         g2.drawString(countdownText, textX, textY);
-        
+
         g2.setFont(new Font("Arial", Font.BOLD, 24));
         g2.setColor(Color.RED);
         String diedText = "YOU DIED";
         fm = g2.getFontMetrics();
         int diedX = (screenWidth - fm.stringWidth(diedText)) / 2;
         int diedY = textY - 60;
-        
+
         g2.setColor(Color.BLACK);
         g2.drawString(diedText, diedX - 1, diedY - 1);
         g2.drawString(diedText, diedX + 1, diedY - 1);
         g2.drawString(diedText, diedX - 1, diedY + 1);
         g2.drawString(diedText, diedX + 1, diedY + 1);
-        
+
         g2.setColor(Color.RED);
         g2.drawString(diedText, diedX, diedY);
     }
@@ -783,12 +801,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 for (ClientPlayer existingPlayer : otherPlayers.values()) {
                     existingPositions.add(new Point2D.Double(existingPlayer.x, existingPlayer.y));
                 }
-                
-                Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH, mapLoader.collisions, existingPositions);
+
+                Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH,
+                        mapLoader.collisions, existingPositions);
                 ClientPlayer player = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null,
                         playerData.id, playerData.name, playerData.characterType);
-            otherPlayers.put(playerData.id, player);
-            NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
+                otherPlayers.put(playerData.id, player);
+                NotificationSystem.addNotification(playerData.name + " joined the game", Color.GREEN);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -797,16 +816,17 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     public void removePlayer(String playerId) {
         synchronized (otherPlayers) {
-        ClientPlayer player = otherPlayers.remove(playerId);
-        if (player != null) {
+            ClientPlayer player = otherPlayers.remove(playerId);
+            if (player != null) {
                 for (int i = 0; i < 20; i++) {
-                    effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                    effects.add(new HitEffect((int) (player.x + Math.random() * 32),
+                            (int) (player.y + Math.random() * 32)));
                 }
-            NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
+                NotificationSystem.addNotification(player.playerName + " left the game", Color.RED);
             }
         }
     }
-    
+
     public void updateChicken(ChickenData chickenData) {
         synchronized (chickens) {
             Chicken existingChicken = null;
@@ -816,7 +836,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     break;
                 }
             }
-            
+
             if (existingChicken != null) {
                 int oldHp = existingChicken.hp;
                 existingChicken.x = chickenData.x;
@@ -827,7 +847,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 existingChicken.isHit = chickenData.isHit;
                 existingChicken.isIdle = chickenData.isIdle;
                 existingChicken.currentFrame = chickenData.currentFrame;
-                
+
                 if (chickenData.hp < oldHp && chickenData.hp > 0) {
                     existingChicken.takeDamage(0);
                 }
@@ -846,15 +866,16 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
     public void updatePlayer(PlayerData playerData) {
         synchronized (otherPlayers) {
-        ClientPlayer player = otherPlayers.get(playerData.id);
-        if (player != null) {
+            ClientPlayer player = otherPlayers.get(playerData.id);
+            if (player != null) {
                 int oldHp = player.hp;
                 player.hp = playerData.hp;
-                
+
                 if (oldHp != player.hp) {
                     if (player.hp <= 0 && oldHp > 0 && !player.isDead) {
                         for (int i = 0; i < 15; i++) {
-                            effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                            effects.add(new HitEffect((int) (player.x + Math.random() * 32),
+                                    (int) (player.y + Math.random() * 32)));
                         }
                         synchronized (corpses) {
                             corpses.add(new CorpseEffect((int) player.x, (int) player.y, player.playerName));
@@ -867,29 +888,30 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         player.playDamageSound();
                     }
                 }
-                
+
                 double lerpFactor = Config.PLAYER_LERP_FACTOR;
                 player.x = (int) (player.x + (playerData.x - player.x) * lerpFactor);
                 player.y = (int) (player.y + (playerData.y - player.y) * lerpFactor);
-            player.angle = playerData.angle;
-            player.ammo = playerData.ammo;
+                player.angle = playerData.angle;
+                player.ammo = playerData.ammo;
                 player.kills = playerData.kills;
-            player.shooting = playerData.shooting;
-            player.reloading = playerData.reloading;
+                player.shooting = playerData.shooting;
+                player.reloading = playerData.reloading;
                 player.hasWeapon = playerData.hasWeapon;
                 player.isGodMode = playerData.isGodMode;
                 player.characterType = playerData.characterType;
-                
+
                 if (playerData.shooting && playerData.hasWeapon) {
                     player.playShootSound();
                 }
-                
+
                 if (playerData.isDead) {
                     if (!player.isDead) {
                         player.isDead = true;
                         player.deathTime = playerData.deathTime;
                         for (int i = 0; i < 15; i++) {
-                            effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                            effects.add(new HitEffect((int) (player.x + Math.random() * 32),
+                                    (int) (player.y + Math.random() * 32)));
                         }
                         synchronized (corpses) {
                             corpses.add(new CorpseEffect((int) player.x, (int) player.y, player.playerName));
@@ -925,32 +947,34 @@ public class ClientGamePanel extends JPanel implements Runnable {
             }
         }
     }
-    
+
     public void hitPlayer(String playerId, int damage) {
         if (playerId.equals(localPlayer.playerId)) {
             for (int i = 0; i < 15; i++) {
-                effects.add(new HitEffect((int) (localPlayer.x + Math.random() * 32), (int) (localPlayer.y + Math.random() * 32)));
+                effects.add(new HitEffect((int) (localPlayer.x + Math.random() * 32),
+                        (int) (localPlayer.y + Math.random() * 32)));
             }
-  
+
             localPlayer.playDamageSound();
         } else {
             synchronized (otherPlayers) {
                 ClientPlayer player = otherPlayers.get(playerId);
                 if (player != null) {
                     for (int i = 0; i < 15; i++) {
-                        effects.add(new HitEffect((int) (player.x + Math.random() * 32), (int) (player.y + Math.random() * 32)));
+                        effects.add(new HitEffect((int) (player.x + Math.random() * 32),
+                                (int) (player.y + Math.random() * 32)));
                     }
-                 
+
                 }
             }
         }
     }
-    
+
     private void drawGodModeLines(Graphics2D g2) {
         g2.setColor(new Color(255, 255, 0, 200));
         g2.setStroke(new BasicStroke(3));
         g2.setFont(new Font("Arial", Font.BOLD, 14));
-        
+
         synchronized (otherPlayers) {
             for (ClientPlayer player : otherPlayers.values()) {
                 if (player != null && player.hp > 0) {
@@ -958,10 +982,11 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     int startY = localPlayer.y - camera.camY;
                     int endX = player.x - camera.camX;
                     int endY = player.y - camera.camY;
-                    
+
                     g2.drawLine(startX, startY, endX, endY);
-                    
-                    double distance = Math.sqrt(Math.pow(player.x - localPlayer.x, 2) + Math.pow(player.y - localPlayer.y, 2));
+
+                    double distance = Math
+                            .sqrt(Math.pow(player.x - localPlayer.x, 2) + Math.pow(player.y - localPlayer.y, 2));
                     String distanceText = String.format("%.0f", distance);
                     FontMetrics fm = g2.getFontMetrics();
                     int textWidth = fm.stringWidth(distanceText);
@@ -976,4 +1001,3 @@ public class ClientGamePanel extends JPanel implements Runnable {
     }
 
 }
-
