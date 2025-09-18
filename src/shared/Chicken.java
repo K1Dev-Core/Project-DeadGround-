@@ -19,7 +19,7 @@ public class Chicken {
     public boolean isHit = false;
     public int hitCooldown = 0;
     public boolean isIdle = true;
-    
+
     private BufferedImage idleSheet, runSheet, hitSheet;
     private int frameWidth = 32;
     private int frameHeight = 34;
@@ -30,13 +30,13 @@ public class Chicken {
     private int animationCounter = 0;
     private int animationSpeed = 8;
     private Clip hitClip;
-    
+
     public Chicken(int id, int x, int y) {
         this.id = id;
         this.x = x;
         this.y = y;
         this.angle = Math.random() * Math.PI * 2;
-        
+
         try {
             idleSheet = ImageIO.read(new File("assets/enemy/Chicken/Idle (32x34).png"));
             runSheet = ImageIO.read(new File("assets/enemy/Chicken/Run (32x34).png"));
@@ -46,7 +46,7 @@ public class Chicken {
             runSheet = null;
             hitSheet = null;
         }
-        
+
         try {
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File("assets/sfx/chicken-hit.wav"));
             hitClip = AudioSystem.getClip();
@@ -55,10 +55,11 @@ public class Chicken {
             hitClip = null;
         }
     }
-    
-    public void update(List<Rectangle2D.Double> collisions, int mapWidth, int mapHeight) {
-        if (hp <= 0) return;
-        
+
+    public void update(List<Rectangle2D.Double> collisions, int mapWidth, int mapHeight, List<Chicken> otherChickens) {
+        if (hp <= 0)
+            return;
+
         if (hitCooldown > 0) {
             hitCooldown--;
             isHit = true;
@@ -66,37 +67,61 @@ public class Chicken {
             isIdle = false;
         } else {
             isHit = false;
-            
+
             if (!isIdle) {
-                if (Math.random() < 0.01) {
+                if (Math.random() < 0.02) {
                     angle = Math.random() * Math.PI * 2;
                 }
-                
+
+                double minDistance = 80;
+                double avoidX = 0, avoidY = 0;
+                int avoidCount = 0;
+
+                for (Chicken other : otherChickens) {
+                    if (other != this && other.hp > 0) {
+                        double dx = x - other.x;
+                        double dy = y - other.y;
+                        double distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < minDistance && distance > 0) {
+                            avoidX += dx / distance;
+                            avoidY += dy / distance;
+                            avoidCount++;
+                        }
+                    }
+                }
+
+                if (avoidCount > 0) {
+                    avoidX /= avoidCount;
+                    avoidY /= avoidCount;
+                    angle = Math.atan2(avoidY, avoidX);
+                }
+
                 velocityX = Math.cos(angle) * speed;
                 velocityY = Math.sin(angle) * speed;
-                
+
                 double newX = x + velocityX;
                 double newY = y + velocityY;
-                
+
                 Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, frameWidth, frameHeight);
-                
+
                 boolean canMove = !Utils.rectHitsCollision(testRect, collisions);
                 boolean withinAnyZone = false;
                 for (int[] zone : Config.CHICKEN_SPAWN_ZONES) {
                     int zoneX = zone[0];
                     int zoneY = zone[1];
                     int zoneSize = zone[2];
-                    if (newX >= zoneX - zoneSize/2 && newX <= zoneX + zoneSize/2 &&
-                        newY >= zoneY - zoneSize/2 && newY <= zoneY + zoneSize/2) {
+                    if (newX >= zoneX - zoneSize / 2 && newX <= zoneX + zoneSize / 2 &&
+                            newY >= zoneY - zoneSize / 2 && newY <= zoneY + zoneSize / 2) {
                         withinAnyZone = true;
                         break;
                     }
                 }
-                
-                boolean withinBounds = newX >= 50 && newY >= 50 && 
-                                    newX < mapWidth - frameWidth - 50 && 
-                                    newY < mapHeight - frameHeight - 50;
-                
+
+                boolean withinBounds = newX >= 50 && newY >= 50 &&
+                        newX < mapWidth - frameWidth - 50 &&
+                        newY < mapHeight - frameHeight - 50;
+
                 if (canMove && withinBounds && withinAnyZone) {
                     x = (int) newX;
                     y = (int) newY;
@@ -124,12 +149,12 @@ public class Chicken {
                 isMoving = false;
             }
         }
-        
+
         animationCounter++;
         if (animationCounter >= animationSpeed) {
             animationCounter = 0;
             currentFrame++;
-            
+
             if (isHit) {
                 if (currentFrame >= hitFrames) {
                     currentFrame = 0;
@@ -145,10 +170,11 @@ public class Chicken {
             }
         }
     }
-    
+
     public void updateFromData(ChickenData data) {
-        if (data == null) return;
-        
+        if (data == null)
+            return;
+
         this.x = data.x;
         this.y = data.y;
         this.hp = data.hp;
@@ -157,18 +183,18 @@ public class Chicken {
         this.isHit = data.isHit;
         this.isIdle = data.isIdle;
         this.currentFrame = data.currentFrame;
-        
+
         if (isHit) {
             hitCooldown = 30;
         }
     }
-    
+
     public void takeDamage(int damage) {
         hp -= damage;
         hitCooldown = 60;
         isHit = true;
         isIdle = false;
-        
+
         if (hitClip != null) {
             if (hitClip.isRunning()) {
                 hitClip.stop();
@@ -177,21 +203,22 @@ public class Chicken {
             hitClip.start();
         }
     }
-    
+
     public void draw(Graphics2D g2, int camX, int camY) {
-        if (hp <= 0) return;
-        
+        if (hp <= 0)
+            return;
+
         int screenX = x - camX;
         int screenY = y - camY;
-        
-        if (screenX < -frameWidth || screenY < -frameHeight || 
-            screenX > 1000 || screenY > 800) {
+
+        if (screenX < -frameWidth || screenY < -frameHeight ||
+                screenX > 1000 || screenY > 800) {
             return;
         }
-        
+
         BufferedImage currentSheet = null;
         int totalFrames = 0;
-        
+
         if (isHit && hitSheet != null) {
             currentSheet = hitSheet;
             totalFrames = hitFrames;
@@ -202,47 +229,47 @@ public class Chicken {
             currentSheet = idleSheet;
             totalFrames = idleFrames;
         }
-        
+
         if (currentSheet != null) {
             int frameX = currentFrame * frameWidth;
             int frameY = 0;
-            
+
             if (frameX + frameWidth <= currentSheet.getWidth()) {
                 BufferedImage frame = currentSheet.getSubimage(frameX, frameY, frameWidth, frameHeight);
-                
+
                 Graphics2D g2d = (Graphics2D) g2.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                
+
                 if (velocityX < 0) {
                     g2d.scale(-1, 1);
                     g2d.drawImage(frame, -screenX - frameWidth, screenY, null);
                 } else {
                     g2d.drawImage(frame, screenX, screenY, null);
                 }
-                
+
                 g2d.dispose();
             }
         } else {
             g2.setColor(Color.YELLOW);
             g2.fillOval(screenX, screenY, frameWidth, frameHeight);
         }
-        
+
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 10));
         FontMetrics fm = g2.getFontMetrics();
         int nameX = screenX - fm.stringWidth("Chicken") / 2;
         int nameY = screenY - 5;
         g2.drawString("Chicken", nameX, nameY);
-        
+
         g2.setColor(Color.GREEN);
         g2.fillRect(screenX, screenY - 15, frameWidth, 3);
         g2.setColor(Color.RED);
-        g2.fillRect(screenX, screenY - 15, (int)(frameWidth * (hp / (double)Config.CHICKEN_HP)), 3);
-        
+        g2.fillRect(screenX, screenY - 15, (int) (frameWidth * (hp / (double) Config.CHICKEN_HP)), 3);
+
         g2.setColor(Color.BLACK);
         g2.drawRect(screenX, screenY - 15, frameWidth, 3);
     }
-    
+
     public Rectangle2D.Double bounds() {
         return new Rectangle2D.Double(x, y, frameWidth, frameHeight);
     }

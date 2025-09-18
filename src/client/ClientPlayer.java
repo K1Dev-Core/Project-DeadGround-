@@ -17,7 +17,7 @@ public class ClientPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
     int kills = 0;
-    BufferedImage stand, shoot, reload;
+    BufferedImage stand, shoot, reload, gunStand;
     double angle = 0;
     int shootCooldown = 0;
     boolean shooting = false;
@@ -32,6 +32,12 @@ public class ClientPlayer {
     int meleeCooldown = 0;
     BufferedImage meleeImage;
     
+    boolean isDashing = false;
+    int dashCooldown = 0;
+    int dashDistance = 0;
+    double dashAngle = 0;
+    private List<?> tanks;
+    
     long deathTime = 0;
     boolean isDead = false;
     boolean movingUp = false;
@@ -45,6 +51,7 @@ public class ClientPlayer {
     Clip reloadClip;
     Clip damageClip;
     Clip deathClip;
+    Clip teleportClip;
 
         int frameCounter = 0;
 
@@ -64,6 +71,7 @@ public class ClientPlayer {
         shoot = ImageIO.read(new File("assets/player/" + characterType + "machine.png"));
         reload = ImageIO.read(new File("assets/player/" + characterType + "reload.png"));
         meleeImage = ImageIO.read(new File("assets/player/" + characterType + "hold.png"));
+        gunStand = ImageIO.read(new File("assets/player/" + characterType + "reload.png"));
 
         try {
             AudioInputStream ais1 = AudioSystem.getAudioInputStream(new File("assets/sfx/footsteps.wav"));
@@ -99,6 +107,10 @@ public class ClientPlayer {
             AudioInputStream ais5 = AudioSystem.getAudioInputStream(new File("assets/sfx/death.wav"));
             deathClip = AudioSystem.getClip();
             deathClip.open(ais5);
+            
+            AudioInputStream ais6 = AudioSystem.getAudioInputStream(new File("assets/sfx/teleport.wav"));
+            teleportClip = AudioSystem.getClip();
+            teleportClip.open(ais6);
         } catch (Exception ignore) {
         }
     }
@@ -108,7 +120,9 @@ public class ClientPlayer {
             List<Rectangle2D.Double> collisions,
             int mapW, int mapH,
             Camera camera,
-            Map<String, ClientPlayer> otherPlayers) {
+            Map<String, ClientPlayer> otherPlayers,
+            List<?> tanks) {
+        this.tanks = tanks;
 
         if (hp <= 0) {
             if (!isDead) {
@@ -140,32 +154,44 @@ public class ClientPlayer {
         int dx = 0, dy = 0;
         isMoving = false;
         
-        if (movingUp) {
-            dy -= Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingDown) {
-            dy += Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingLeft) {
-            dx -= Config.PLAYER_SPEED;
-            isMoving = true;
-        }
-        if (movingRight) {
-            dx += Config.PLAYER_SPEED;
-            isMoving = true;
+        if (isDashing) {
+            double dashDx = Math.cos(dashAngle) * Config.DASH_SPEED;
+            double dashDy = Math.sin(dashAngle) * Config.DASH_SPEED;
+            dx = (int) dashDx;
+            dy = (int) dashDy;
+            dashDistance += Config.DASH_SPEED;
+            if (dashDistance >= Config.DASH_DISTANCE) {
+                isDashing = false;
+                dashDistance = 0;
+            }
+        } else {
+            if (movingUp) {
+                dy -= Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingDown) {
+                dy += Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingLeft) {
+                dx -= Config.PLAYER_SPEED;
+                isMoving = true;
+            }
+            if (movingRight) {
+                dx += Config.PLAYER_SPEED;
+                isMoving = true;
+            }
         }
 
         if (dx != 0) {
             Rectangle2D.Double nextX = new Rectangle2D.Double(x + dx, y, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers))
+            if (!Utils.rectHitsCollision(nextX, collisions) && !collidesWithPlayers(nextX, otherPlayers) && !collidesWithTanks(nextX))
                 x += dx;
         }
         
         if (dy != 0) {
             Rectangle2D.Double nextY = new Rectangle2D.Double(x, y + dy, stand.getWidth(), stand.getHeight());
-            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers))
+            if (!Utils.rectHitsCollision(nextY, collisions) && !collidesWithPlayers(nextY, otherPlayers) && !collidesWithTanks(nextY))
                 y += dy;
         }
 
@@ -192,13 +218,13 @@ public class ClientPlayer {
                     reloadClip.stop();
                 }
             }
-        } else if (shooting && shootCooldown == 0 && hasWeapon && ammo > 0 && !isDead && !justShot) {
+        } else if (shooting && shootCooldown == 0 && hasWeapon && ammo > 0 && !isDead && !justShot && !isDashing) {
             spawnBulletFromMuzzle(bullets);
             ammo--;
             playShootSound();
             shootCooldown = Config.PLAYER_SHOOT_DELAY;
             justShot = true;
-        } else if (shooting && meleeCooldown == 0 && !hasWeapon && !isDead) {
+        } else if (shooting && meleeCooldown == 0 && !hasWeapon && !isDead && !isDashing) {
             performMeleeAttack(otherPlayers);
             meleeCooldown = Config.MELEE_COOLDOWN;
         } else if (shooting && hasWeapon && ammo == 0 && !reloading) {
@@ -209,15 +235,53 @@ public class ClientPlayer {
             shootCooldown--;
         if (meleeCooldown > 0)
             meleeCooldown--;
+        if (dashCooldown > 0)
+            dashCooldown--;
         
-        if (justShot && shootCooldown > 0) {
+        if (justShot && shootCooldown == 0) {
             justShot = false;
         }
-
-        frameCounter++;
-        if (frameCounter >= 15) {
-            frameCounter = 0;
+    }
+    
+    public void startDash() {
+        if (dashCooldown == 0 && !isDashing) {
+            isDashing = true;
+            dashAngle = angle;
+            dashDistance = 0;
+            dashCooldown = Config.DASH_COOLDOWN;
+            playTeleportSound();
         }
+    }
+    
+    public void playTeleportSound() {
+        try {
+            if (teleportClip != null) {
+                teleportClip.setFramePosition(0);
+                teleportClip.start();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void drawDashEffect(Graphics2D g2, int drawX, int drawY) {
+        g2.setColor(new Color(255, 255, 255, 150));
+        g2.setStroke(new BasicStroke(3));
+        
+        int centerX = drawX + stand.getWidth() / 2;
+        int centerY = drawY + stand.getHeight() / 2;
+        
+        double trailLength = 30;
+        double trailX = centerX - Math.cos(angle) * trailLength;
+        double trailY = centerY - Math.sin(angle) * trailLength;
+        
+        g2.drawLine(centerX, centerY, (int) trailX, (int) trailY);
+        
+        g2.setColor(new Color(255, 255, 255, 100));
+        g2.fillOval(centerX - 15, centerY - 15, 30, 30);
+        
+        g2.setColor(new Color(255, 255, 255, 200));
+        g2.fillOval(centerX - 8, centerY - 8, 16, 16);
     }
 
     private void spawnBulletFromMuzzle(List<Bullet> bullets) {
@@ -313,6 +377,27 @@ public class ClientPlayer {
         }
         return false;
     }
+    
+    private boolean collidesWithTanks(Rectangle2D.Double rect) {
+        for (Object tank : this.tanks) {
+            if (tank != null) {
+                try {
+                    int tankX = (Integer) tank.getClass().getField("x").get(tank);
+                    int tankY = (Integer) tank.getClass().getField("y").get(tank);
+                    boolean tankDead = (Boolean) tank.getClass().getField("isDead").get(tank);
+                    if (!tankDead) {
+                        Rectangle2D.Double tankRect = new Rectangle2D.Double(tankX, tankY, 64, 64);
+                        if (rect.intersects(tankRect)) {
+                            return true;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return false;
+    }
 
     public void draw(Graphics2D g2, int camX, int camY, Point mouse, Camera camera) {
         int drawX = x - camX;
@@ -329,13 +414,18 @@ public class ClientPlayer {
             img = shoot;
         } else if (shooting && !hasWeapon) {
             img = meleeImage;
+        } else if (hasWeapon) {
+            img = gunStand;
         } else {
             img = stand;
         }
 
         AffineTransform at = new AffineTransform();
         
-        if (isMoving) {
+        if (isDashing) {
+            double dashBounce = Math.sin(System.currentTimeMillis() * 0.02) * 4;
+            at.translate(drawX, drawY + dashBounce);
+        } else if (isMoving) {
             double bounce = Math.sin(System.currentTimeMillis() * 0.01) * 2;
             at.translate(drawX, drawY + bounce);
         } else {
@@ -344,6 +434,10 @@ public class ClientPlayer {
         
         at.rotate(angle, img.getWidth() / 2.0, img.getHeight() / 2.0);
         g2.drawImage(img, at, null);
+        
+        if (isDashing) {
+            drawDashEffect(g2, drawX, drawY);
+        }
 
         drawHpBar(g2, drawX, drawY, 60, hp);
 
