@@ -17,6 +17,9 @@ public class ClientPlayer implements IPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
     int armor = 0;
+    boolean shieldActive = false;
+    long shieldStartTime = 0;
+    long shieldCooldownEnd = 0;
     int kills = 0;
     BufferedImage stand, shoot, reload, gunStand;
     double angle = 0;
@@ -137,6 +140,7 @@ public class ClientPlayer implements IPlayer {
             if (isDead && System.currentTimeMillis() - deathTime >= Config.RESPAWN_TIME * 1000) {
                 hp = Config.PLAYER_HP;
         armor = 0;
+        shieldActive = false;
                 ammo = 0;
                 hasWeapon = false;
                 isDead = false;
@@ -330,7 +334,7 @@ public class ClientPlayer implements IPlayer {
     }
 
     public void takeDamage(int damage) {
-        if (!isGodMode) {
+        if (!isGodMode && !shieldActive) {
             if (armor > 0) {
                 armor -= damage;
                 if (armor < 0) {
@@ -450,17 +454,20 @@ public class ClientPlayer implements IPlayer {
 
         drawHpBar(g2, drawX, drawY, 60, hp);
         drawArmorBar(g2, drawX, drawY, 60, armor);
+        if (shieldActive) {
+            drawShield(g2, drawX, drawY);
+        }
 
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
         FontMetrics fm = g2.getFontMetrics();
         int nameWidth = fm.stringWidth(playerName);
-        g2.drawString(playerName, drawX + (img.getWidth() - nameWidth) / 2, drawY - 15);
+        g2.drawString(playerName, drawX + (img.getWidth() - nameWidth) / 2, drawY - 35);
     }
 
     public PlayerData toPlayerData() {
         PlayerData data = new PlayerData(playerId, playerName, x, y, characterType);
-        data.update(x, y, angle, hp, ammo, kills, shooting, reloading, isGodMode);
+        data.update(x, y, angle, hp, ammo, kills, shooting, reloading, isGodMode, shieldActive);
         data.hasWeapon = hasWeapon;
         return data;
     }
@@ -530,5 +537,33 @@ public class ClientPlayer implements IPlayer {
         g2.fillRect(drawX, drawY - 20, (int) (width * (armor / (double)Config.PLAYER_MAX_ARMOR)), 5);
         g2.setColor(Color.black);
         g2.drawRect(drawX, drawY - 20, width, 5);
+    }
+    
+    private void drawShield(Graphics2D g2, int drawX, int drawY) {
+        g2.setColor(new Color(0, 255, 255, 150));
+        g2.setStroke(new BasicStroke(4));
+        g2.drawOval(drawX - 20, drawY - 20, 100, 100);
+        
+        g2.setColor(new Color(0, 255, 255, 80));
+        g2.setStroke(new BasicStroke(2));
+        g2.drawOval(drawX - 25, drawY - 25, 110, 110);
+    }
+    
+    public void activateShield() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime >= shieldCooldownEnd) {
+            shieldActive = true;
+            shieldStartTime = currentTime;
+            shieldCooldownEnd = currentTime + Config.SHIELD_COOLDOWN;
+        }
+    }
+    
+    public void updateShield() {
+        if (shieldActive) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - shieldStartTime >= Config.SHIELD_DURATION) {
+                shieldActive = false;
+            }
+        }
     }
 }

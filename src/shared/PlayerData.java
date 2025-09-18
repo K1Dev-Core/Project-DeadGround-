@@ -16,6 +16,7 @@ public class PlayerData implements Serializable {
     public boolean reloading;
     public boolean hasWeapon = false;
     public boolean isGodMode = false;
+    public boolean shieldActive = false;
     public String characterType = "hitman1_";
     public long lastUpdate;
     public long deathTime = 0;
@@ -50,7 +51,7 @@ public class PlayerData implements Serializable {
         this.lastUpdate = System.currentTimeMillis();
     }
 
-    public void update(double x, double y, double angle, int hp, int ammo, int kills, boolean shooting, boolean reloading, boolean isGodMode) {
+    public void update(double x, double y, double angle, int hp, int ammo, int kills, boolean shooting, boolean reloading, boolean isGodMode, boolean shieldActive) {
         this.x = x;
         this.y = y;
         this.angle = angle;
@@ -60,6 +61,7 @@ public class PlayerData implements Serializable {
         this.shooting = shooting;
         this.reloading = reloading;
         this.isGodMode = isGodMode;
+        this.shieldActive = shieldActive;
         this.lastUpdate = System.currentTimeMillis();
         
         if (hp <= 0 && !isDead) {

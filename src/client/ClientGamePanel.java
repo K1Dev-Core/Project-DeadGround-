@@ -165,6 +165,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             localPlayer.startDash();
                         }
                         break;
+                    case KeyEvent.VK_1:
+                        localPlayer.activateShield();
+                        break;
                 }
             }
 
@@ -291,6 +294,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
         for (ClientPlayer player : playersCopy) {
             if (player != null) {
                 player.draw(g2, camera.camX, camera.camY, mousePoint, camera);
+                if (player.shieldActive) {
+                    drawOtherPlayerShield(g2, player, camera.camX, camera.camY);
+                }
                 if (player.isDashing) {
                     player.drawDashEffect(g2, player.x - camera.camX, player.y - camera.camY);
                 }
@@ -317,6 +323,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
         if (showHUD) {
             drawHUD(g2);
         }
+        
+        drawShieldItem(g2);
         drawDebugInfo(g2);
 
         long currentTime = System.currentTimeMillis();
@@ -409,6 +417,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
             localPlayer.update(mousePoint, bullets, mapLoader.collisions,
                     mapLoader.mapPixelW, mapLoader.mapPixelH,
                     camera, otherPlayers, new ArrayList<>());
+            localPlayer.updateShield();
 
             if (System.currentTimeMillis() % Config.NETWORK_UPDATE_RATE == 0) {
                 networkClient.sendPlayerUpdate(localPlayer.toPlayerData());
@@ -438,6 +447,16 @@ public class ClientGamePanel extends JPanel implements Runnable {
                     }
 
                     Rectangle2D.Double bRect = blt.bounds();
+                    
+                    Rectangle2D.Double localPlayerRect = new Rectangle2D.Double(localPlayer.x, localPlayer.y, 32, 32);
+                    if (bRect.intersects(localPlayerRect)) {
+                        if (!localPlayer.isGodMode && !localPlayer.shieldActive) {
+                            localPlayer.takeDamage(Config.BULLET_DAMAGE);
+                            effects.add(new HitEffect((int) localPlayer.x, (int) localPlayer.y));
+                        }
+                        bulletsToRemove.add(blt);
+                        continue;
+                    }
 
                     synchronized (otherPlayers) {
                         ArrayList<ClientPlayer> playersCopy = new ArrayList<>(otherPlayers.values());
@@ -445,12 +464,16 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             if (player != null && player.hp > 0 && !player.playerId.equals(localPlayer.playerId)) {
                                 Rectangle2D.Double playerRect = player.bounds();
                                 if (playerRect.intersects(bRect)) {
-                                    System.out
-                                            .println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
-                                    effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
-                                    bulletsToRemove.add(blt);
+                                    if (!player.shieldActive) {
+                                        System.out
+                                                .println("BULLET HIT! Player: " + player.playerName + " HP: " + player.hp);
+                                        effects.add(new HitEffect((int) (blt.x + 4), (int) (blt.y + 4)));
+                                        bulletsToRemove.add(blt);
 
-                                    networkClient.sendPlayerHit(player.playerId, Config.BULLET_DAMAGE);
+                                        networkClient.sendPlayerHit(player.playerId, Config.BULLET_DAMAGE);
+                                    } else {
+                                        bulletsToRemove.add(blt);
+                                    }
                                     break;
                                 }
                             }
@@ -748,6 +771,92 @@ public class ClientGamePanel extends JPanel implements Runnable {
         g2.drawString("Version: " + gameVersion, 15, getHeight() - 25);
 
     }
+    
+    private void drawOtherPlayerShield(Graphics2D g2, ClientPlayer player, int camX, int camY) {
+        int screenX = player.x - camX;
+        int screenY = player.y - camY;
+        
+        if (screenX < -Config.RENDER_DISTANCE_X || screenX > 800 + Config.RENDER_DISTANCE_X || 
+            screenY < -Config.RENDER_DISTANCE_Y || screenY > 600 + Config.RENDER_DISTANCE_Y) {
+            return;
+        }
+        
+        g2.setColor(new Color(0, 255, 255, 150));
+        g2.setStroke(new BasicStroke(4));
+        g2.drawOval(screenX - 20, screenY - 20, 100, 100);
+        
+        g2.setColor(new Color(0, 255, 255, 80));
+        g2.setStroke(new BasicStroke(2));
+        g2.drawOval(screenX - 25, screenY - 25, 110, 110);
+    }
+    
+    private void drawShieldItem(Graphics2D g2) {
+        int centerX = getWidth() / 2;
+        int centerY = getHeight() - 80;
+        int itemSize = 45;
+        
+        g2.setColor(new Color(0, 0, 0, 200));
+        g2.fillRoundRect(centerX - itemSize/2, centerY - itemSize/2, itemSize, itemSize, 15, 15);
+        
+        g2.setColor(Color.BLACK);
+        g2.setStroke(new BasicStroke(2));
+        g2.drawRoundRect(centerX - itemSize/2, centerY - itemSize/2, itemSize, itemSize, 12, 12);
+        
+        if (localPlayer.shieldActive) {
+            g2.setColor(new Color(0, 255, 255, 150));
+            g2.fillRoundRect(centerX - itemSize/2 + 4, centerY - itemSize/2 + 4, itemSize - 8, itemSize - 8, 8, 8);
+            
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("Arial", Font.BOLD, 16));
+            FontMetrics fm = g2.getFontMetrics();
+            String text = "1";
+            int textX = centerX - fm.stringWidth(text) / 2;
+            int textY = centerY + fm.getHeight() / 4;
+            g2.drawString(text, textX, textY);
+        } else {
+            long currentTime = System.currentTimeMillis();
+            long cooldownRemaining = localPlayer.shieldCooldownEnd - currentTime;
+            
+            if (cooldownRemaining > 0) {
+                g2.setColor(new Color(100, 100, 100, 150));
+                g2.fillRoundRect(centerX - itemSize/2 + 4, centerY - itemSize/2 + 4, itemSize - 8, itemSize - 8, 8, 8);
+                
+                double cooldownProgress = 1.0 - (double) cooldownRemaining / Config.SHIELD_COOLDOWN;
+                int progressHeight = (int) ((itemSize - 8) * cooldownProgress);
+                
+                g2.setColor(new Color(0, 200, 200, 200));
+                g2.fillRoundRect(centerX - itemSize/2 + 4, centerY - itemSize/2 + 4 + (itemSize - 8 - progressHeight), 
+                                itemSize - 8, progressHeight, 8, 8);
+                
+                g2.setColor(Color.WHITE);
+                g2.setFont(new Font("Arial", Font.BOLD, 14));
+                FontMetrics fm = g2.getFontMetrics();
+                String text = "1";
+                int textX = centerX - fm.stringWidth(text) / 2;
+                int textY = centerY + fm.getHeight() / 4;
+                g2.drawString(text, textX, textY);
+            } else {
+                g2.setColor(new Color(255, 255, 0, 150));
+                g2.fillRoundRect(centerX - itemSize/2 + 4, centerY - itemSize/2 + 4, itemSize - 8, itemSize - 8, 8, 8);
+                
+                g2.setColor(Color.BLACK);
+                g2.setFont(new Font("Arial", Font.BOLD, 16));
+                FontMetrics fm = g2.getFontMetrics();
+                String text = "1";
+                int textX = centerX - fm.stringWidth(text) / 2;
+                int textY = centerY + fm.getHeight() / 4;
+                g2.drawString(text, textX, textY);
+            }
+        }
+        
+        g2.setColor(Color.WHITE);
+        g2.setFont(new Font("Arial", Font.BOLD, 12));
+        FontMetrics fm = g2.getFontMetrics();
+        String skillName = "Shield";
+        int nameX = centerX - fm.stringWidth(skillName) / 2;
+        int nameY = centerY + itemSize/2 + 20;
+        g2.drawString(skillName, nameX, nameY);
+    }
 
     private void drawDeathScreen(Graphics2D g2) {
         int screenWidth = getWidth();
@@ -900,6 +1009,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 player.reloading = playerData.reloading;
                 player.hasWeapon = playerData.hasWeapon;
                 player.isGodMode = playerData.isGodMode;
+                player.shieldActive = playerData.shieldActive;
                 player.characterType = playerData.characterType;
 
                 if (playerData.shooting && playerData.hasWeapon) {

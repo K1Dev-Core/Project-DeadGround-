@@ -10,6 +10,8 @@ public class Config {
     public static final int PLAYER_HP = 100;
     public static final int PLAYER_MAX_HP = PLAYER_HP;
     public static final int PLAYER_MAX_ARMOR = 50;
+    public static final int SHIELD_DURATION = 3000;
+    public static final int SHIELD_COOLDOWN = 20000;
     public static final int PLAYER_SHOOT_DELAY = 80;
     public static final int MAX_AMMO = 20;
     public static final int RELOAD_TIME = 600;
@@ -283,20 +285,19 @@ public class Config {
     public static int ZOMBIE_RANDOM_MOVE_RANGE = 200;
     public static int ZOMBIE_RANDOM_MOVE_TIMER = 120;
     
-    // Rendering Settings
+  
     public static int RENDER_DISTANCE_X = 400;
     public static int RENDER_DISTANCE_Y = 400;
-    
-    // Chomp Settings
+ 
     public static int CHOMP_HP = 60;
     public static int CHOMP_RESPAWN_TIME = 400;
     public static int CHOMP_MOVEMENT_SPEED = 1;
-    public static int CHOMP_DAMAGE = 3;
+    public static int CHOMP_DAMAGE = 1;
     public static int CHOMP_ATTACK_RANGE = 50;
-    public static int CHOMP_ATTACK_COOLDOWN = 40;
+    public static int CHOMP_ATTACK_COOLDOWN = 80;
     public static int CHOMP_HEAL_AMOUNT = 20;
     public static int CHOMP_ARMOR_AMOUNT = 5;
-    public static int MAX_TOTAL_CHOMPS = 15;
+    public static int MAX_TOTAL_CHOMPS = 7;
     
     public static int CHOMP_DETECTION_RANGE = 300;
     public static int CHOMP_CHASE_RANGE = 500;
