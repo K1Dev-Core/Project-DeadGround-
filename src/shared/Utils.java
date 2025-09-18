@@ -22,8 +22,17 @@ public class Utils {
         int minDistance = 150;
         
         for (int attempt = 0; attempt < Config.RESPAWN_ATTEMPTS; attempt++) {
-            int x = random.nextInt(mapWidth - Config.RESPAWN_SAFE_DISTANCE * 2) + Config.RESPAWN_SAFE_DISTANCE;
-            int y = random.nextInt(mapHeight - Config.RESPAWN_SAFE_DISTANCE * 2) + Config.RESPAWN_SAFE_DISTANCE;
+            int[] spawnZone = Config.PLAYER_SPAWN_ZONES[random.nextInt(Config.PLAYER_SPAWN_ZONES.length)];
+            int centerX = spawnZone[0];
+            int centerY = spawnZone[1];
+            int radius = spawnZone[2];
+            
+            int x = centerX + random.nextInt(radius * 2) - radius;
+            int y = centerY + random.nextInt(radius * 2) - radius;
+            
+            if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) {
+                continue;
+            }
             
             Rectangle2D.Double testRect = new Rectangle2D.Double(x, y, 32, 32); 
             if (!rectHitsCollision(testRect, collisions)) {
