@@ -68,7 +68,7 @@ public class GameLauncher extends JFrame {
         setTitle("Project-DeadGround - Online Multiplayer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
-        setSize(1000, 450);
+        setSize(1000, 650);
         setLocationRelativeTo(null);
 
         mainPanel = new JPanel() {
@@ -107,20 +107,20 @@ public class GameLauncher extends JFrame {
 
         String version = loadVersion();
         versionLabel = new JLabel("Version: " + version);
-        versionLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        versionLabel.setForeground(new Color(200, 200, 200));
-        versionLabel.setBounds(450, 420, 100, 25);
-        versionLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        versionLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        versionLabel.setForeground(new Color(150, 150, 150));
+        versionLabel.setBounds(20, 620, 150, 20);
         mainPanel.add(versionLabel);
 
         createCharacterSelectionPanel();
         createConnectionPanel();
         createPlayerNamePanel();
+        createControlsPanel();
 
         statusLabel = new JLabel("Ready to connect...");
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         statusLabel.setForeground(Color.GRAY);
-        statusLabel.setBounds(50, 600, 400, 25);
+        statusLabel.setBounds(50, 420, 400, 25);
         mainPanel.add(statusLabel);
     }
 
@@ -176,6 +176,52 @@ public class GameLauncher extends JFrame {
         characterPanel.add(nextCharacterButton);
 
         updateCharacterPreview();
+    }
+
+    private void createControlsPanel() {
+        JPanel controlsPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
+
+                g2.setColor(new Color(30, 30, 30));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setColor(new Color(100, 100, 100));
+                g2.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
+
+                g2.setColor(new Color(50, 50, 50));
+                g2.fillRect(5, 5, getWidth() - 10, getHeight() - 10);
+            }
+        };
+        controlsPanel.setLayout(null);
+        controlsPanel.setBounds(500, 300, 400, 300);
+        mainPanel.add(controlsPanel);
+
+        JLabel controlsTitleLabel = new JLabel("GAME CONTROLS");
+        controlsTitleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        controlsTitleLabel.setForeground(Color.WHITE);
+        controlsTitleLabel.setBounds(20, 20, 200, 25);
+        controlsPanel.add(controlsTitleLabel);
+
+        String[] controls = {
+                "WASD - Move",
+                "Mouse - Aim",
+                "Left Click - Shoot",
+                "Shift - Dash",
+                "Spacebar - Show Scoreboard"
+        };
+
+        int y = 60;
+        for (String control : controls) {
+            JLabel controlLabel = new JLabel(control);
+            controlLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            controlLabel.setForeground(new Color(200, 200, 200));
+            controlLabel.setBounds(30, y, 400, 20);
+            controlsPanel.add(controlLabel);
+            y += 25;
+        }
     }
 
     private void createConnectionPanel() {
