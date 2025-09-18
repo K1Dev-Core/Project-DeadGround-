@@ -505,7 +505,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
                         if (chomp != null && chomp.alive) {
                             Rectangle2D.Double chompRect = new Rectangle2D.Double(chomp.x, chomp.y, 32, 32);
                             if (chompRect.intersects(bRect)) {
+                                boolean wasAlive = chomp.alive;
                                 chomp.takeDamage(Config.BULLET_DAMAGE);
+                                
+                                if (wasAlive && !chomp.alive) {
+                                    localPlayer.hp = Math.min(localPlayer.hp + Config.CHOMP_HEAL_AMOUNT, Config.PLAYER_MAX_HP);
+                                }
+                                
                                 for (int j = 0; j < 3; j++) {
                                     effects.add(new HitEffect((int) (chomp.x + Math.random() * 32),
                                             (int) (chomp.y + Math.random() * 32)));

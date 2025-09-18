@@ -8,6 +8,7 @@ public class Config {
     public static final int DASH_DISTANCE = 300;
     public static final int DASH_COOLDOWN = 1000;
     public static final int PLAYER_HP = 100;
+    public static final int PLAYER_MAX_HP = 250;
     public static final int PLAYER_SHOOT_DELAY = 80;
     public static final int MAX_AMMO = 20;
     public static final int RELOAD_TIME = 600;
@@ -291,6 +292,7 @@ public class Config {
     public static int CHOMP_DAMAGE = 3;
     public static int CHOMP_ATTACK_RANGE = 50;
     public static int CHOMP_ATTACK_COOLDOWN = 40;
+    public static int CHOMP_HEAL_AMOUNT = 20;
     public static int MAX_TOTAL_CHOMPS = 15;
     
     public static int CHOMP_DETECTION_RANGE = 300;
