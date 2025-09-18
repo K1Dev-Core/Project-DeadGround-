@@ -29,6 +29,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
     private java.util.List<Weapon> weapons = new ArrayList<>();
     private java.util.List<ExplosionEffect> explosionEffects = new ArrayList<>();
     private ZombieManager zombieManager;
+    private ChompManager chompManager;
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -107,6 +108,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         localPlayer = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null, playerId, playerName, characterType);
         
         zombieManager = new ZombieManager(mapLoader.collisions);
+        chompManager = new ChompManager(mapLoader.collisions);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -358,6 +360,7 @@ public class ClientGamePanel extends JPanel implements Runnable {
         
      
         zombieManager.render(g2, camera.camX, camera.camY);
+        chompManager.render(g2, camera.camX, camera.camY);
 
         g2.dispose();
     }
@@ -496,6 +499,22 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             }
                         }
                     }
+                    
+                    ArrayList<Chomp> chompsCopy = new ArrayList<>(chompManager.getChomps());
+                    for (Chomp chomp : chompsCopy) {
+                        if (chomp != null && chomp.alive) {
+                            Rectangle2D.Double chompRect = new Rectangle2D.Double(chomp.x, chomp.y, 32, 32);
+                            if (chompRect.intersects(bRect)) {
+                                chomp.takeDamage(Config.BULLET_DAMAGE);
+                                for (int j = 0; j < 3; j++) {
+                                    effects.add(new HitEffect((int) (chomp.x + Math.random() * 32),
+                                            (int) (chomp.y + Math.random() * 32)));
+                                }
+                                bulletsToRemove.add(blt);
+                                break;
+                            }
+                        }
+                    }
 
                 }
 
@@ -528,6 +547,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
 
         zombieManager.setPlayers(allPlayers);
         zombieManager.update();
+        chompManager.setPlayers(allPlayers);
+        chompManager.update(mapLoader.collisions, allPlayers);
         
         synchronized (chickens) {
             ArrayList<Chicken> chickensToRemove = new ArrayList<>();

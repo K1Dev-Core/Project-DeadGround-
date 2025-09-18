@@ -284,6 +284,29 @@ public class Config {
     public static int RENDER_DISTANCE_X = 400;
     public static int RENDER_DISTANCE_Y = 400;
     
+    // Chomp Settings
+    public static int CHOMP_HP = 60;
+    public static int CHOMP_RESPAWN_TIME = 400;
+    public static int CHOMP_MOVEMENT_SPEED = 1;
+    public static int CHOMP_DAMAGE = 3;
+    public static int CHOMP_ATTACK_RANGE = 50;
+    public static int CHOMP_ATTACK_COOLDOWN = 40;
+    public static int MAX_TOTAL_CHOMPS = 15;
+    
+    public static int CHOMP_DETECTION_RANGE = 300;
+    public static int CHOMP_CHASE_RANGE = 500;
+    public static int CHOMP_AVOIDANCE_RANGE = 40;
+    public static int CHOMP_AVOIDANCE_STRENGTH = 30;
+    public static int CHOMP_RANDOM_MOVE_RANGE = 150;
+    public static int CHOMP_RANDOM_MOVE_TIMER = 100;
+    
+    public static int[][] CHOMP_SPAWN_ZONES = {
+            { 2000, 1500, 200, 3 },
+            { 3500, 2000, 150, 2 },
+            { 1000, 3000, 180, 2 },
+            { 4000, 1000, 120, 1 }
+    };
+    
     public static int[][] ZOMBIE_SPAWN_ZONES = {
             { 4500, 790, 200, 10 },
 
