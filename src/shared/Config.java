@@ -263,6 +263,22 @@ public class Config {
     public static int CHICKEN_RESPAWN_TIME = 300;
     public static int CHICKEN_MOVEMENT_SPEED = 1;
     public static int CHICKEN_HEAL_AMOUNT = 30;
+    
+   
+    public static int ZOMBIE_HP = 50;
+    public static int ZOMBIE_RESPAWN_TIME = 600; 
+    public static int ZOMBIE_MOVEMENT_SPEED = 1;
+    public static int ZOMBIE_DAMAGE = 2;
+    public static int ZOMBIE_ATTACK_RANGE = 50;
+    public static int ZOMBIE_ATTACK_COOLDOWN = 60; 
+    public static int MAX_TOTAL_ZOMBIES = 10;
+    
+    public static int[][] ZOMBIE_SPAWN_ZONES = {
+            { 3440, 2321, 100, 2 }, 
+            { 1000, 1200, 150, 3 },
+            { 2000, 800, 120, 2 },
+            { 500, 2000, 100, 1 }
+    };
 
     public static int[][] CHICKEN_SPAWN_ZONES = {
             { 1000, 1200, 200 },

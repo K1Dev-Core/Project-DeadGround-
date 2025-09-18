@@ -139,13 +139,12 @@ public class MapLoader {
          
             if (ts.hasAttribute("source")) {
                 System.out.println("Creating tileset for external reference: " + ts.getAttribute("source"));
-                // สร้าง tileset ใหม่สำหรับ external tileset โดยใช้ข้อมูลจาก tileset ที่มีอยู่แล้ว
+             
                 Tileset t = new Tileset();
                 t.firstGid = Integer.parseInt(ts.getAttribute("firstgid"));
-                t.tileWidth = 64; // ใช้ขนาดมาตรฐาน
+                t.tileWidth = 64; 
                 t.tileHeight = 64;
-                
-                // ใช้ tileset ที่มีอยู่แล้ว (towerDefense_tilesheet.png)
+             
                 String baseName = "towerDefense_tilesheet.png";
                 Path sheetPath = tmxPath.getParent().resolve(baseName);
                 if (!Files.exists(sheetPath))
@@ -154,7 +153,7 @@ public class MapLoader {
                 if (Files.exists(sheetPath)) {
                     t.sheet = ImageIO.read(sheetPath.toFile());
                     
-                    // คำนวณ columns และ tileCount จากขนาดภาพจริง
+               
                     t.columns = t.sheet.getWidth() / t.tileWidth;
                     int rows = t.sheet.getHeight() / t.tileHeight;
                     t.tileCount = t.columns * rows;

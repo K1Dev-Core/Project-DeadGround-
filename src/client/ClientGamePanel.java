@@ -22,13 +22,13 @@ public class ClientGamePanel extends JPanel implements Runnable {
     public ClientPlayer localPlayer;
     private Map<String, ClientPlayer> otherPlayers = new HashMap<>();
     private java.util.List<Bullet> bullets = new ArrayList<>();
-    private Map<String, Bot> bots = new HashMap<>();
     public java.util.List<HitEffect> effects = new ArrayList<>();
     public java.util.List<CorpseEffect> corpses = new ArrayList<>();
     private java.util.List<Chicken> chickens = new ArrayList<>();
     private java.util.List<Long> chickenRespawnTimes = new ArrayList<>();
     private java.util.List<Weapon> weapons = new ArrayList<>();
     private java.util.List<ExplosionEffect> explosionEffects = new ArrayList<>();
+    private ZombieManager zombieManager;
     private BufferedImage customCursor;
     private BufferedImage bulletImg;
     private Point mousePoint = new Point(0, 0);
@@ -105,6 +105,8 @@ public class ClientGamePanel extends JPanel implements Runnable {
         Point2D.Double spawnPos = Utils.findSafeSpawnPosition(mapLoader.mapPixelW, mapLoader.mapPixelH,
                 mapLoader.collisions);
         localPlayer = new ClientPlayer((int) spawnPos.x, (int) spawnPos.y, null, playerId, playerName, characterType);
+        
+        zombieManager = new ZombieManager(mapLoader.collisions);
 
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
@@ -353,6 +355,9 @@ public class ClientGamePanel extends JPanel implements Runnable {
         }
 
         drawDashCooldownBar(g2);
+        
+     
+        zombieManager.render(g2, camera.camX, camera.camY);
 
         g2.dispose();
     }
@@ -474,6 +479,23 @@ public class ClientGamePanel extends JPanel implements Runnable {
                             }
                         }
                     }
+                    
+                    
+                    ArrayList<Zombie> zombiesCopy = new ArrayList<>(zombieManager.getZombies());
+                    for (Zombie zombie : zombiesCopy) {
+                        if (zombie != null && zombie.alive) {
+                            Rectangle2D.Double zombieRect = new Rectangle2D.Double(zombie.x, zombie.y, 80, 80);
+                            if (zombieRect.intersects(bRect)) {
+                                zombie.takeDamage(Config.BULLET_DAMAGE);
+                                for (int j = 0; j < 5; j++) {
+                                    effects.add(new HitEffect((int) (zombie.x + Math.random() * 80),
+                                            (int) (zombie.y + Math.random() * 80)));
+                                }
+                                bulletsToRemove.add(blt);
+                                break;
+                            }
+                        }
+                    }
 
                 }
 
@@ -499,10 +521,18 @@ public class ClientGamePanel extends JPanel implements Runnable {
                 }
             }
 
-            synchronized (chickens) {
-                ArrayList<Chicken> chickensToRemove = new ArrayList<>();
-                ArrayList<Long> respawnTimesToRemove = new ArrayList<>();
-                long chickenCurrentTime = System.currentTimeMillis();
+        java.util.List<IPlayer> allPlayers = new ArrayList<>();
+        allPlayers.add(localPlayer);
+        allPlayers.addAll(otherPlayers.values());
+        
+
+        zombieManager.setPlayers(allPlayers);
+        zombieManager.update();
+        
+        synchronized (chickens) {
+            ArrayList<Chicken> chickensToRemove = new ArrayList<>();
+            ArrayList<Long> respawnTimesToRemove = new ArrayList<>();
+            long chickenCurrentTime = System.currentTimeMillis();
 
                 for (int i = 0; i < chickens.size(); i++) {
                     Chicken chicken = chickens.get(i);

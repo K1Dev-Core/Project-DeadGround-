@@ -13,7 +13,7 @@ import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import shared.*;
 
-public class ClientPlayer {
+public class ClientPlayer implements IPlayer {
     int x, y;
     int hp = Config.PLAYER_HP;
     int kills = 0;
@@ -301,6 +301,14 @@ public class ClientPlayer {
 
     public int getCenterY() {
         return y + stand.getHeight() / 2;
+    }
+    
+    public int getX() {
+        return x;
+    }
+    
+    public int getY() {
+        return y;
     }
 
     public void setMovingUp(boolean moving) {

@@ -16,4 +16,16 @@ public class PlayerAdapter implements IPlayer {
     public int getCenterY() {
         return player.getCenterY();
     }
+    
+    public int getX() {
+        return player.getX();
+    }
+    
+    public int getY() {
+        return player.getY();
+    }
+    
+    public void takeDamage(int damage) {
+        player.takeDamage(damage);
+    }
 }
