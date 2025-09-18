@@ -27,7 +27,7 @@ public class Config {
 
     public static int NETWORK_UPDATE_RATE = 2;
     public static double PLAYER_LERP_FACTOR = 0.8;
-    public static int RESPAWN_TIME = 10;
+    public static int RESPAWN_TIME = 5;
     public static int RESPAWN_SAFE_DISTANCE = 100;
     public static int RESPAWN_ATTEMPTS = 50;
     public static int CHICKEN_HP = 80;
