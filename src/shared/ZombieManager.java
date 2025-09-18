@@ -29,7 +29,7 @@ public class ZombieManager {
    
         for (int i = zombies.size() - 1; i >= 0; i--) {
             Zombie zombie = zombies.get(i);
-            zombie.update(collisions, players);
+            zombie.update(collisions, players, zombies);
             
             if (!zombie.alive) {
                 zombies.remove(i);

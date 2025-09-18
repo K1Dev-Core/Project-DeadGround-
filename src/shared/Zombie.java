@@ -19,6 +19,7 @@ public class Zombie {
     private int movementTimer;
     private Random random;
     private int targetX, targetY;
+    private IPlayer targetPlayer;
     
 
     private BufferedImage[] flySprites;
@@ -29,9 +30,7 @@ public class Zombie {
     private Clip zombieSound;
     
   
-    private static final int DETECTION_RANGE = 500;
-    private static final int CHASE_RANGE = 800;
-    private static final int ATTACK_RANGE = 80;
+    // Use values from Config instead of hardcoded constants
     
     public Zombie(int x, int y) {
         this.x = x;
@@ -107,7 +106,7 @@ public class Zombie {
         }
     }
     
-    public void update(List<Rectangle2D.Double> collisions, List<IPlayer> players) {
+    public void update(List<Rectangle2D.Double> collisions, List<IPlayer> players, List<Zombie> otherZombies) {
         if (!alive) return;
         
       
@@ -125,38 +124,124 @@ public class Zombie {
         IPlayer nearestPlayer = null;
         double nearestDistance = Double.MAX_VALUE;
         
-        if (players != null) {
+        if (targetPlayer != null) {
+            double dx = targetPlayer.getX() - x;
+            double dy = targetPlayer.getY() - y;
+            double distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= Config.ZOMBIE_CHASE_RANGE) {
+                nearestPlayer = targetPlayer;
+                nearestDistance = distance;
+            } else {
+                targetPlayer = null;
+            }
+        }
+        
+        if (nearestPlayer == null && players != null) {
             for (IPlayer player : players) {
                 if (player != null) {
                     double dx = player.getX() - x;
                     double dy = player.getY() - y;
                     double distance = Math.sqrt(dx * dx + dy * dy);
                     
-                    if (distance < nearestDistance) {
+                    if (distance < nearestDistance && distance <= Config.ZOMBIE_DETECTION_RANGE) {
                         nearestDistance = distance;
                         nearestPlayer = player;
+                        targetPlayer = player;
                     }
                 }
             }
         }
        
-        if (nearestPlayer != null && nearestDistance <= DETECTION_RANGE) {
-           
-            targetX = nearestPlayer.getX();
-            targetY = nearestPlayer.getY();
+        if (nearestPlayer != null && nearestDistance <= Config.ZOMBIE_DETECTION_RANGE) {
+            // If we have a target player, check if they're still in chase range
+            if (targetPlayer != null && targetPlayer != nearestPlayer) {
+                double targetDistance = Math.sqrt((targetPlayer.getX() - x) * (targetPlayer.getX() - x) + (targetPlayer.getY() - y) * (targetPlayer.getY() - y));
+                if (targetDistance <= Config.ZOMBIE_CHASE_RANGE) {
+                    nearestPlayer = targetPlayer;
+                    nearestDistance = targetDistance;
+                }
+            }
             
-         
-            if (nearestDistance <= ATTACK_RANGE && attackCooldown <= 0) {
+            // If no target player or current target is out of range, find new target
+            if (targetPlayer == null || nearestDistance > Config.ZOMBIE_CHASE_RANGE) {
+                targetPlayer = nearestPlayer;
+            }
+            double angleToPlayer = Math.atan2(nearestPlayer.getY() - y, nearestPlayer.getX() - x);
+            double distanceToPlayer = nearestDistance;
+            
+            double avoidX = 0;
+            double avoidY = 0;
+            
+            for (Zombie otherZombie : otherZombies) {
+                if (otherZombie != this && otherZombie.alive) {
+                    double dx = x - otherZombie.x;
+                    double dy = y - otherZombie.y;
+                    double distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < Config.ZOMBIE_AVOIDANCE_RANGE && distance > 0) {
+                        double avoidStrength = (Config.ZOMBIE_AVOIDANCE_RANGE - distance) / Config.ZOMBIE_AVOIDANCE_RANGE;
+                        avoidX += (dx / distance) * avoidStrength * Config.ZOMBIE_AVOIDANCE_STRENGTH;
+                        avoidY += (dy / distance) * avoidStrength * Config.ZOMBIE_AVOIDANCE_STRENGTH;
+                    }
+                }
+            }
+            
+            targetX = (int) (nearestPlayer.getX() + Math.cos(angleToPlayer) * 40 + avoidX);
+            targetY = (int) (nearestPlayer.getY() + Math.sin(angleToPlayer) * 40 + avoidY);
+            
+            if (nearestDistance <= Config.ZOMBIE_ATTACK_RANGE && attackCooldown <= 0) {
                 nearestPlayer.takeDamage(Config.ZOMBIE_DAMAGE);
                 attackCooldown = Config.ZOMBIE_ATTACK_COOLDOWN;
             }
-        } else if (nearestPlayer == null || nearestDistance > CHASE_RANGE) {
+        } else {
+            // Only clear target if they're really out of chase range
+            if (targetPlayer != null) {
+                double targetDistance = Math.sqrt((targetPlayer.getX() - x) * (targetPlayer.getX() - x) + (targetPlayer.getY() - y) * (targetPlayer.getY() - y));
+                if (targetDistance > Config.ZOMBIE_CHASE_RANGE) {
+                    targetPlayer = null;
+                }
+            }
             
-            movementTimer--;
-            if (movementTimer <= 0) {
-                targetX = x + random.nextInt(200) - 100;
-                targetY = y + random.nextInt(200) - 100;
-                movementTimer = random.nextInt(120) + 60;
+            double avoidX = 0;
+            double avoidY = 0;
+            
+            for (Zombie otherZombie : otherZombies) {
+                if (otherZombie != this && otherZombie.alive) {
+                    double dx = x - otherZombie.x;
+                    double dy = y - otherZombie.y;
+                    double distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < Config.ZOMBIE_AVOIDANCE_RANGE && distance > 0) {
+                        double avoidStrength = (Config.ZOMBIE_AVOIDANCE_RANGE - distance) / Config.ZOMBIE_AVOIDANCE_RANGE;
+                        avoidX += (dx / distance) * avoidStrength * Config.ZOMBIE_AVOIDANCE_STRENGTH;
+                        avoidY += (dy / distance) * avoidStrength * Config.ZOMBIE_AVOIDANCE_STRENGTH;
+                    }
+                }
+            }
+            
+            // If we have a target player, try to move towards them even in random mode
+            if (targetPlayer != null) {
+                double targetDistance = Math.sqrt((targetPlayer.getX() - x) * (targetPlayer.getX() - x) + (targetPlayer.getY() - y) * (targetPlayer.getY() - y));
+                if (targetDistance <= Config.ZOMBIE_CHASE_RANGE) {
+                    double angleToTarget = Math.atan2(targetPlayer.getY() - y, targetPlayer.getX() - x);
+                    targetX = (int) (targetPlayer.getX() + Math.cos(angleToTarget) * 40 + avoidX);
+                    targetY = (int) (targetPlayer.getY() + Math.sin(angleToTarget) * 40 + avoidY);
+                } else {
+                    movementTimer--;
+                    if (movementTimer <= 0) {
+                        targetX = x + random.nextInt(Config.ZOMBIE_RANDOM_MOVE_RANGE) - (Config.ZOMBIE_RANDOM_MOVE_RANGE/2) + (int)avoidX;
+                        targetY = y + random.nextInt(Config.ZOMBIE_RANDOM_MOVE_RANGE) - (Config.ZOMBIE_RANDOM_MOVE_RANGE/2) + (int)avoidY;
+                        movementTimer = random.nextInt(Config.ZOMBIE_RANDOM_MOVE_TIMER) + 60;
+                    }
+                }
+            } else {
+                movementTimer--;
+                if (movementTimer <= 0) {
+                    targetX = x + random.nextInt(Config.ZOMBIE_RANDOM_MOVE_RANGE) - (Config.ZOMBIE_RANDOM_MOVE_RANGE/2) + (int)avoidX;
+                    targetY = y + random.nextInt(Config.ZOMBIE_RANDOM_MOVE_RANGE) - (Config.ZOMBIE_RANDOM_MOVE_RANGE/2) + (int)avoidY;
+                    movementTimer = random.nextInt(Config.ZOMBIE_RANDOM_MOVE_TIMER) + 60;
+                }
             }
         }
         
@@ -175,8 +260,20 @@ public class Zombie {
        
             Rectangle2D.Double testRect = new Rectangle2D.Double(newX, newY, 80, 80);
             if (!Utils.rectHitsCollision(testRect, collisions)) {
-                x = newX;
-                y = newY;
+                boolean canMove = true;
+                for (Zombie otherZombie : otherZombies) {
+                    if (otherZombie != this && otherZombie.alive) {
+                        Rectangle2D.Double otherRect = new Rectangle2D.Double(otherZombie.x, otherZombie.y, 80, 80);
+                        if (testRect.intersects(otherRect)) {
+                            canMove = false;
+                            break;
+                        }
+                    }
+                }
+                if (canMove) {
+                    x = newX;
+                    y = newY;
+                }
             }
             
         
@@ -204,7 +301,8 @@ public class Zombie {
         int screenY = y - camY;
         
 
-        if (screenX < -50 || screenX > 800 || screenY < -50 || screenY > 600) {
+        if (screenX < -Config.RENDER_DISTANCE_X || screenX > 800 + Config.RENDER_DISTANCE_X || 
+            screenY < -Config.RENDER_DISTANCE_Y || screenY > 600 + Config.RENDER_DISTANCE_Y) {
             return;
         }
         

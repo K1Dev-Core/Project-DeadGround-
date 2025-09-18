@@ -12,7 +12,7 @@ public class Config {
     public static final int MAX_AMMO = 20;
     public static final int RELOAD_TIME = 600;
 
-    public static final int BOT_SPEED = 1;
+
     public static final int BOT_HP = 100;
 
     public static final int BULLET_SPEED = 7;
@@ -28,7 +28,7 @@ public class Config {
     public static int NETWORK_UPDATE_RATE = 2;
     public static double PLAYER_LERP_FACTOR = 0.8;
     public static int RESPAWN_TIME = 5;
-    public static int RESPAWN_SAFE_DISTANCE = 100;
+
     public static int RESPAWN_ATTEMPTS = 50;
     
     public static int[][] PLAYER_SPAWN_ZONES = {
@@ -260,24 +260,33 @@ public class Config {
     };
     public static int CHICKEN_HP = 80;
     public static int CHICKEN_SPAWN_COUNT = 8;
-    public static int CHICKEN_RESPAWN_TIME = 300;
+    public static int CHICKEN_RESPAWN_TIME = 200;
     public static int CHICKEN_MOVEMENT_SPEED = 1;
-    public static int CHICKEN_HEAL_AMOUNT = 30;
+    public static int CHICKEN_HEAL_AMOUNT = 50;
     
    
-    public static int ZOMBIE_HP = 50;
-    public static int ZOMBIE_RESPAWN_TIME = 600; 
-    public static int ZOMBIE_MOVEMENT_SPEED = 1;
-    public static int ZOMBIE_DAMAGE = 2;
-    public static int ZOMBIE_ATTACK_RANGE = 50;
-    public static int ZOMBIE_ATTACK_COOLDOWN = 60; 
+    public static int ZOMBIE_HP = 80;
+    public static int ZOMBIE_RESPAWN_TIME = 300; 
+    public static int ZOMBIE_MOVEMENT_SPEED = 2;
+    public static int ZOMBIE_DAMAGE = 1;
+    public static int ZOMBIE_ATTACK_RANGE = 80;
+    public static int ZOMBIE_ATTACK_COOLDOWN = 30; 
     public static int MAX_TOTAL_ZOMBIES = 10;
+
+    public static int ZOMBIE_DETECTION_RANGE = 600;
+    public static int ZOMBIE_CHASE_RANGE = 800;
+    public static int ZOMBIE_AVOIDANCE_RANGE = 50;
+    public static int ZOMBIE_AVOIDANCE_STRENGTH = 40;
+    public static int ZOMBIE_RANDOM_MOVE_RANGE = 200;
+    public static int ZOMBIE_RANDOM_MOVE_TIMER = 120;
+    
+    // Rendering Settings
+    public static int RENDER_DISTANCE_X = 400;
+    public static int RENDER_DISTANCE_Y = 400;
     
     public static int[][] ZOMBIE_SPAWN_ZONES = {
-            { 3440, 2321, 100, 2 }, 
-            { 1000, 1200, 150, 3 },
-            { 2000, 800, 120, 2 },
-            { 500, 2000, 100, 1 }
+            { 4500, 790, 200, 10 },
+
     };
 
     public static int[][] CHICKEN_SPAWN_ZONES = {
